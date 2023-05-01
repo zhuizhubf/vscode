@@ -110,7 +110,7 @@ export class AccessibleBufferWidget extends TerminalAccessibleWidget {
 		const result: ICommandWithEditorLine[] = [];
 		for (const command of commands) {
 			const lineNumber = this._getEditorLineForCommand(command);
-			if (!lineNumber) {
+			if (lineNumber === undefined) {
 				continue;
 			}
 			result.push({ command, lineNumber });
