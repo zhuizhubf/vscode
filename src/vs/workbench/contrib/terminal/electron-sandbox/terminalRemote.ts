@@ -11,6 +11,7 @@ import { IRemoteAuthorityResolverService } from 'vs/platform/remote/common/remot
 import { registerTerminalAction } from 'vs/workbench/contrib/terminal/browser/terminalActions';
 import { TerminalCommandId } from 'vs/workbench/contrib/terminal/common/terminal';
 import { IHistoryService } from 'vs/workbench/services/history/common/history';
+import { ILifecycleService } from 'vs/workbench/services/lifecycle/common/lifecycle';
 
 export function registerRemoteContributions() {
 	registerTerminalAction({
@@ -18,6 +19,7 @@ export function registerRemoteContributions() {
 		title: { value: localize('workbench.action.terminal.newLocal', "Create New Integrated Terminal (Local)"), original: 'Create New Integrated Terminal (Local)' },
 		run: async (c, accessor) => {
 			const historyService = accessor.get(IHistoryService);
+			const lifecycleService = accessor.get(ILifecycleService);
 			const remoteAuthorityResolverService = accessor.get(IRemoteAuthorityResolverService);
 			const nativeEnvironmentService = accessor.get(INativeEnvironmentService);
 			let cwd: URI | undefined;
@@ -37,7 +39,7 @@ export function registerRemoteContributions() {
 			if (!instance) {
 				return Promise.resolve(undefined);
 			}
-
+			lifecycleService.onBeforeShutdown(() => instance.dispose());
 			c.service.setActiveInstance(instance);
 			return c.groupService.showPanel(true);
 		}
