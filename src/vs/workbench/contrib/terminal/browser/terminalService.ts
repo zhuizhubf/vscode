@@ -626,8 +626,11 @@ export class TerminalService implements ITerminalService {
 		// Don't touch processes if the shutdown was a result of reload as they will be reattached
 		const shouldPersistTerminals = this._configHelper.config.enablePersistentSessions && e.reason === ShutdownReason.RELOAD;
 		if (shouldPersistTerminals) {
-			for (const instance of this._terminalGroupService.instances) {
+			for (const instance of this._terminalGroupService.instances.filter(i => i.shouldPersist)) {
 				instance.detachProcessAndDispose(TerminalExitReason.Shutdown);
+			}
+			for (const instance of this._terminalGroupService.instances.filter(i => !i.shouldPersist)) {
+				instance.dispose(TerminalExitReason.Shutdown);
 			}
 			return;
 		}
