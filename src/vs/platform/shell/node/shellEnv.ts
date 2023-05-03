@@ -129,6 +129,8 @@ async function doResolveUnixShellEnv(logService: ILogService, token: Cancellatio
 		const name = basename(systemShellUnix);
 		let command: string, shellArgs: Array<string>;
 		const extraArgs = (process.versions['electron'] && process.versions['microsoft-build']) ? '--ms-enable-electron-run-as-node' : '';
+		logService.info('getUnixShellEnvironment#nu-command-beforeChanges', `'${process.execPath}' ${extraArgs} -p '"${mark}" + JSON.stringify(process.env) + "${mark}"'`);
+
 		if (/^pwsh(-preview)?$/.test(name)) {
 			// Older versions of PowerShell removes double quotes sometimes so we use "double single quotes" which is how
 			// you escape single quotes inside of a single quoted string.
@@ -136,10 +138,10 @@ async function doResolveUnixShellEnv(logService: ILogService, token: Cancellatio
 			shellArgs = ['-Login', '-Command'];
 		} else if (name === 'nu') { // nushell requires ^ before quoted path to treat it as a command
 			command = `^'${process.execPath}' ${extraArgs} -p '"${mark}" + JSON.stringify(process.env) + "${mark}"'`;
+			logService.info('getUnixShellEnvironment#nu-command-afterChanges', command);
 			shellArgs = ['-i', '-l', '-c'];
 		} else {
 			command = `'${process.execPath}' ${extraArgs} -p '"${mark}" + JSON.stringify(process.env) + "${mark}"'`;
-
 			if (name === 'tcsh' || name === 'csh') {
 				shellArgs = ['-ic'];
 			} else {
@@ -154,7 +156,6 @@ async function doResolveUnixShellEnv(logService: ILogService, token: Cancellatio
 			stdio: ['ignore', 'pipe', 'pipe'],
 			env
 		});
-
 		token.onCancellationRequested(() => {
 			child.kill();
 
