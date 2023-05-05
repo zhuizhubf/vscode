@@ -272,7 +272,12 @@ export abstract class AbstractSessionFileWatcher extends Disposable implements I
 	// This is important because we want to ensure that we only
 	// forward events from the watched paths for this session and
 	// not other clients that asked to watch other paths.
-	private readonly fileWatcher = this._register(new DiskFileSystemProvider(this.logService, { watcher: { recursive: this.getRecursiveWatcherOptions(this.environmentService) } }));
+	private readonly fileWatcher = this._register(new DiskFileSystemProvider(this.logService, {
+		logsHome: this.environmentService.logsHome,
+		watcher: {
+			recursive: this.getRecursiveWatcherOptions(this.environmentService)
+		}
+	}));
 
 	constructor(
 		private readonly uriTransformer: IURITransformer,

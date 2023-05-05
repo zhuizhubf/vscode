@@ -12,10 +12,11 @@ import { CancellationToken } from 'vs/base/common/cancellation';
 import { ReadableStreamEvents } from 'vs/base/common/stream';
 import { URI } from 'vs/base/common/uri';
 import { DiskFileSystemProviderClient, LOCAL_FILE_SYSTEM_CHANNEL_NAME } from 'vs/platform/files/common/diskFileSystemProviderClient';
-import { IDiskFileChange, ILogMessage, AbstractUniversalWatcherClient } from 'vs/platform/files/common/watcher';
+import { IDiskFileChange, AbstractUniversalWatcherClient, IWatcherClientLoggerConfiguration } from 'vs/platform/files/common/watcher';
 import { UniversalWatcherClient } from 'vs/workbench/services/files/electron-sandbox/watcherClient';
 import { ILogService } from 'vs/platform/log/common/log';
 import { IUtilityProcessWorkerWorkbenchService } from 'vs/workbench/services/utilityProcess/electron-sandbox/utilityProcessWorkerWorkbenchService';
+import { IEnvironmentService } from 'vs/platform/environment/common/environment';
 
 /**
  * A sandbox ready disk file system provider that delegates almost all calls
@@ -35,9 +36,15 @@ export class DiskFileSystemProvider extends AbstractDiskFileSystemProvider imple
 	constructor(
 		private readonly mainProcessService: IMainProcessService,
 		private readonly utilityProcessWorkerWorkbenchService: IUtilityProcessWorkerWorkbenchService,
-		logService: ILogService
+		logService: ILogService,
+		environmentService: IEnvironmentService
 	) {
-		super(logService, { watcher: { forceUniversal: true /* send all requests to universal watcher process */ } });
+		super(logService, {
+			logsHome: environmentService.logsHome,
+			watcher: {
+				forceUniversal: true /* send all requests to universal watcher process */
+			}
+		});
 
 		this.registerListeners();
 	}
@@ -133,10 +140,9 @@ export class DiskFileSystemProvider extends AbstractDiskFileSystemProvider imple
 
 	protected createUniversalWatcher(
 		onChange: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	): AbstractUniversalWatcherClient {
-		return new UniversalWatcherClient(changes => onChange(changes), msg => onLogMessage(msg), verboseLogging, this.utilityProcessWorkerWorkbenchService);
+		return new UniversalWatcherClient(changes => onChange(changes), loggerConfiguration, this.utilityProcessWorkerWorkbenchService);
 	}
 
 	protected createNonRecursiveWatcher(): never {

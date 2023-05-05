@@ -24,7 +24,7 @@ export class RemoteAgentFileSystemProviderChannel extends AbstractDiskFileSystem
 		logService: ILogService,
 		private readonly environmentService: IServerEnvironmentService
 	) {
-		super(new DiskFileSystemProvider(logService), logService);
+		super(new DiskFileSystemProvider(logService, { logsHome: environmentService.logsHome }), logService);
 
 		this._register(this.provider);
 	}

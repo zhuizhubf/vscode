@@ -119,7 +119,7 @@ export async function setupServerServices(connectionToken: ServerConnectionToken
 	// Files
 	const fileService = disposables.add(new FileService(logService));
 	services.set(IFileService, fileService);
-	fileService.registerProvider(Schemas.file, disposables.add(new DiskFileSystemProvider(logService)));
+	fileService.registerProvider(Schemas.file, disposables.add(new DiskFileSystemProvider(logService, { logsHome: environmentService.logsHome })));
 
 	// URI Identity
 	const uriIdentityService = new UriIdentityService(fileService);

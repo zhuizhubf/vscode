@@ -11,11 +11,17 @@ import { Disposable, IDisposable, toDisposable } from 'vs/base/common/lifecycle'
 import { normalize } from 'vs/base/common/path';
 import { URI } from 'vs/base/common/uri';
 import { IFileChange, IFileSystemProvider, IWatchOptions } from 'vs/platform/files/common/files';
-import { AbstractNonRecursiveWatcherClient, AbstractUniversalWatcherClient, IDiskFileChange, ILogMessage, INonRecursiveWatchRequest, IRecursiveWatcherOptions, isRecursiveWatchRequest, IUniversalWatchRequest, toFileChanges } from 'vs/platform/files/common/watcher';
+import { AbstractNonRecursiveWatcherClient, AbstractUniversalWatcherClient, IDiskFileChange, INonRecursiveWatchRequest, IRecursiveWatcherOptions, isRecursiveWatchRequest, IUniversalWatchRequest, IWatcherClientLoggerConfiguration, toFileChanges } from 'vs/platform/files/common/watcher';
 import { ILogService, LogLevel } from 'vs/platform/log/common/log';
 
 export interface IDiskFileSystemProviderOptions {
-	watcher?: {
+
+	/**
+	 * The location of where to store logs into.
+	 */
+	readonly logsHome: URI;
+
+	readonly watcher?: {
 
 		/**
 		 * Extra options for the recursive file watching.
@@ -43,7 +49,7 @@ export abstract class AbstractDiskFileSystemProvider extends Disposable implemen
 
 	constructor(
 		protected readonly logService: ILogService,
-		private readonly options?: IDiskFileSystemProviderOptions
+		private readonly options: IDiskFileSystemProviderOptions
 	) {
 		super();
 	}
@@ -103,13 +109,16 @@ export abstract class AbstractDiskFileSystemProvider extends Disposable implemen
 		if (!this.universalWatcher) {
 			this.universalWatcher = this._register(this.createUniversalWatcher(
 				changes => this._onDidChangeFile.fire(toFileChanges(changes)),
-				msg => this.onWatcherLogMessage(msg),
-				this.logService.getLevel() === LogLevel.Trace
+				{
+					onError: error => this.onWatcherError(error),
+					verboseLogging: this.logService.getLevel() === LogLevel.Trace,
+					logsHome: this.options?.logsHome
+				}
 			));
 
 			// Apply log levels dynamically
 			this._register(this.logService.onDidChangeLogLevel(() => {
-				this.universalWatcher?.setVerboseLogging(this.logService.getLevel() === LogLevel.Trace);
+				this.universalWatcher?.setLogging(this.options.logsHome, this.logService.getLevel() === LogLevel.Trace);
 			}));
 		}
 
@@ -137,8 +146,7 @@ export abstract class AbstractDiskFileSystemProvider extends Disposable implemen
 
 	protected abstract createUniversalWatcher(
 		onChange: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	): AbstractUniversalWatcherClient;
 
 	//#endregion
@@ -184,13 +192,16 @@ export abstract class AbstractDiskFileSystemProvider extends Disposable implemen
 		if (!this.nonRecursiveWatcher) {
 			this.nonRecursiveWatcher = this._register(this.createNonRecursiveWatcher(
 				changes => this._onDidChangeFile.fire(toFileChanges(changes)),
-				msg => this.onWatcherLogMessage(msg),
-				this.logService.getLevel() === LogLevel.Trace
+				{
+					onError: error => this.onWatcherError(error),
+					verboseLogging: this.logService.getLevel() === LogLevel.Trace,
+					logsHome: this.options.logsHome
+				}
 			));
 
 			// Apply log levels dynamically
 			this._register(this.logService.onDidChangeLogLevel(() => {
-				this.nonRecursiveWatcher?.setVerboseLogging(this.logService.getLevel() === LogLevel.Trace);
+				this.nonRecursiveWatcher?.setLogging(this.options.logsHome, this.logService.getLevel() === LogLevel.Trace);
 			}));
 		}
 
@@ -200,18 +211,14 @@ export abstract class AbstractDiskFileSystemProvider extends Disposable implemen
 
 	protected abstract createNonRecursiveWatcher(
 		onChange: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	): AbstractNonRecursiveWatcherClient;
 
 	//#endregion
 
-	private onWatcherLogMessage(msg: ILogMessage): void {
-		if (msg.type === 'error') {
-			this._onDidWatchError.fire(msg.message);
-		}
-
-		this.logService[msg.type](msg.message);
+	private onWatcherError(error: string): void {
+		this._onDidWatchError.fire(error);
+		this.logService.error(error);
 	}
 
 	protected toFilePath(resource: URI): string {

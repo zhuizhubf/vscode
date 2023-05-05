@@ -17,6 +17,7 @@ import { DeferredPromise } from 'vs/base/common/async';
 import { CancellationTokenSource } from 'vs/base/common/cancellation';
 import { NodeJSWatcher } from 'vs/platform/files/node/watcher/nodejs/nodejsWatcher';
 import { FileAccess } from 'vs/base/common/network';
+import { URI } from 'vs/base/common/uri';
 
 // this suite has shown flaky runs in Azure pipelines where
 // tasks would just hang and timeout after a while (not in
@@ -58,14 +59,14 @@ import { FileAccess } from 'vs/base/common/network';
 
 	function enableLogging(enable: boolean) {
 		loggingEnabled = enable;
-		watcher?.setVerboseLogging(enable);
+		watcher?.setLogging(URI.file('tests').with({ scheme: 'vscode-tests' }), enable);
 	}
 
 	enableLogging(false);
 
 	setup(async () => {
 		watcher = new TestNodeJSWatcher();
-		watcher?.setVerboseLogging(loggingEnabled);
+		watcher?.setLogging(URI.file('tests').with({ scheme: 'vscode-tests' }), loggingEnabled);
 
 		watcher.onDidLogMessage(e => {
 			if (loggingEnabled) {

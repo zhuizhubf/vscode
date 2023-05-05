@@ -7,6 +7,7 @@ import { Event, Emitter } from 'vs/base/common/event';
 import { patternsEquals } from 'vs/base/common/glob';
 import { Disposable } from 'vs/base/common/lifecycle';
 import { isLinux } from 'vs/base/common/platform';
+import { URI } from 'vs/base/common/uri';
 import { IDiskFileChange, ILogMessage, INonRecursiveWatchRequest, INonRecursiveWatcher } from 'vs/platform/files/common/watcher';
 import { NodeJSFileWatcherLibrary } from 'vs/platform/files/node/watcher/nodejs/nodejsWatcherLib';
 
@@ -118,11 +119,11 @@ export class NodeJSWatcher extends Disposable implements INonRecursiveWatcher {
 		return Array.from(requestsMap.values());
 	}
 
-	async setVerboseLogging(enabled: boolean): Promise<void> {
-		this.verboseLogging = enabled;
+	async setLogging(logsHome: URI, verbose: boolean): Promise<void> {
+		this.verboseLogging = verbose;
 
 		for (const [, watcher] of this.watchers) {
-			watcher.instance.setVerboseLogging(enabled);
+			watcher.instance.setLogging(logsHome, verbose);
 		}
 	}
 

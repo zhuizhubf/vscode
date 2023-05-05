@@ -8,7 +8,7 @@ import { GLOBSTAR, IRelativePattern, parse, ParsedPattern } from 'vs/base/common
 import { Disposable, DisposableStore, MutableDisposable } from 'vs/base/common/lifecycle';
 import { isAbsolute } from 'vs/base/common/path';
 import { isLinux } from 'vs/base/common/platform';
-import { URI as uri } from 'vs/base/common/uri';
+import { URI } from 'vs/base/common/uri';
 import { FileChangeType, IFileChange, isParent } from 'vs/platform/files/common/files';
 
 interface IWatchRequest {
@@ -73,11 +73,6 @@ interface IWatcher {
 	readonly onDidChangeFile: Event<IDiskFileChange[]>;
 
 	/**
-	 * An event to indicate a message that should get logged.
-	 */
-	readonly onDidLogMessage: Event<ILogMessage>;
-
-	/**
 	 * An event to indicate an error occurred from the watcher
 	 * that is unrecoverable. Listeners should restart the
 	 * watcher if possible.
@@ -93,9 +88,9 @@ interface IWatcher {
 	watch(requests: IWatchRequest[]): Promise<void>;
 
 	/**
-	 * Enable verbose logging in the watcher.
+	 * Configures logging in the watcher.
 	 */
-	setVerboseLogging(enabled: boolean): Promise<void>;
+	setLogging(logsHome: URI, verbose: boolean): Promise<void>;
 
 	/**
 	 * Stop all watchers.
@@ -136,6 +131,14 @@ export interface IUniversalWatcher extends IWatcher {
 	watch(requests: IUniversalWatchRequest[]): Promise<void>;
 }
 
+export interface IWatcherClientLoggerConfiguration {
+
+	readonly verboseLogging: boolean;
+	readonly logsHome: URI;
+
+	onError: (error: string) => void;
+}
+
 export abstract class AbstractWatcherClient extends Disposable {
 
 	private static readonly MAX_RESTARTS = 5;
@@ -149,8 +152,7 @@ export abstract class AbstractWatcherClient extends Disposable {
 
 	constructor(
 		private readonly onFileChanges: (changes: IDiskFileChange[]) => void,
-		private readonly onLogMessage: (msg: ILogMessage) => void,
-		private verboseLogging: boolean,
+		private readonly loggerConfiguration: IWatcherClientLoggerConfiguration,
 		private options: {
 			type: string;
 			restartOnError: boolean;
@@ -169,11 +171,10 @@ export abstract class AbstractWatcherClient extends Disposable {
 
 		// Ask implementors to create the watcher
 		this.watcher = this.createWatcher(disposables);
-		this.watcher.setVerboseLogging(this.verboseLogging);
+		this.watcher.setLogging(this.loggerConfiguration.logsHome, this.loggerConfiguration.verboseLogging);
 
 		// Wire in event handlers
 		disposables.add(this.watcher.onDidChangeFile(changes => this.onFileChanges(changes)));
-		disposables.add(this.watcher.onDidLogMessage(msg => this.onLogMessage(msg)));
 		disposables.add(this.watcher.onDidError(error => this.onError(error)));
 	}
 
@@ -182,17 +183,21 @@ export abstract class AbstractWatcherClient extends Disposable {
 		// Restart on error (up to N times, if enabled)
 		if (this.options.restartOnError) {
 			if (this.restartCounter < AbstractWatcherClient.MAX_RESTARTS && this.requests) {
-				this.error(`restarting watcher after error: ${error}`);
+				this.logError(`restarting watcher after error: ${error}`);
 				this.restart(this.requests);
 			} else {
-				this.error(`gave up attempting to restart watcher after error: ${error}`);
+				this.logError(`gave up attempting to restart watcher after error: ${error}`);
 			}
 		}
 
 		// Do not attempt to restart if not enabled
 		else {
-			this.error(error);
+			this.logError(error);
 		}
+	}
+
+	private logError(error: string): void {
+		this.loggerConfiguration.onError(`[File Watcher (${this.options.type})] ${error}`);
 	}
 
 	private restart(requests: IUniversalWatchRequest[]): void {
@@ -208,18 +213,8 @@ export abstract class AbstractWatcherClient extends Disposable {
 		await this.watcher?.watch(requests);
 	}
 
-	async setVerboseLogging(verboseLogging: boolean): Promise<void> {
-		this.verboseLogging = verboseLogging;
-
-		await this.watcher?.setVerboseLogging(verboseLogging);
-	}
-
-	private error(message: string) {
-		this.onLogMessage({ type: 'error', message: `[File Watcher (${this.options.type})] ${message}` });
-	}
-
-	protected trace(message: string) {
-		this.onLogMessage({ type: 'trace', message: `[File Watcher (${this.options.type})] ${message}` });
+	async setLogging(logsHome: URI, verbose: boolean): Promise<void> {
+		await this.watcher?.setLogging(logsHome, verbose);
 	}
 
 	override dispose(): void {
@@ -235,10 +230,9 @@ export abstract class AbstractNonRecursiveWatcherClient extends AbstractWatcherC
 
 	constructor(
 		onFileChanges: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	) {
-		super(onFileChanges, onLogMessage, verboseLogging, { type: 'node.js', restartOnError: false });
+		super(onFileChanges, loggerConfiguration, { type: 'node.js', restartOnError: false });
 	}
 
 	protected abstract override createWatcher(disposables: DisposableStore): INonRecursiveWatcher;
@@ -248,10 +242,9 @@ export abstract class AbstractUniversalWatcherClient extends AbstractWatcherClie
 
 	constructor(
 		onFileChanges: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	) {
-		super(onFileChanges, onLogMessage, verboseLogging, { type: 'universal', restartOnError: true });
+		super(onFileChanges, loggerConfiguration, { type: 'universal', restartOnError: true });
 	}
 
 	protected abstract override createWatcher(disposables: DisposableStore): IUniversalWatcher;
@@ -270,7 +263,7 @@ export interface ILogMessage {
 export function toFileChanges(changes: IDiskFileChange[]): IFileChange[] {
 	return changes.map(change => ({
 		type: change.type,
-		resource: uri.file(change.path)
+		resource: URI.file(change.path)
 	}));
 }
 

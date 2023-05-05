@@ -30,7 +30,7 @@ flakySuite('StateService', () => {
 		logService = new NullLogService();
 
 		fileService = new FileService(logService);
-		diskFileSystemProvider = new DiskFileSystemProvider(logService);
+		diskFileSystemProvider = new DiskFileSystemProvider(logService, { logsHome: URI.file('tests').with({ scheme: 'vscode-tests' }) });
 		fileService.registerProvider(Schemas.file, diskFileSystemProvider);
 
 		return Promises.mkdir(testDir, { recursive: true });

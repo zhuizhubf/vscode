@@ -21,7 +21,7 @@ import { IDirent, Promises, RimRafMode, SymlinkSupport } from 'vs/base/node/pfs'
 import { localize } from 'vs/nls';
 import { createFileSystemProviderError, IFileAtomicReadOptions, IFileDeleteOptions, IFileOpenOptions, IFileOverwriteOptions, IFileReadStreamOptions, FileSystemProviderCapabilities, FileSystemProviderError, FileSystemProviderErrorCode, FileType, IFileWriteOptions, IFileSystemProviderWithFileAtomicReadCapability, IFileSystemProviderWithFileCloneCapability, IFileSystemProviderWithFileFolderCopyCapability, IFileSystemProviderWithFileReadStreamCapability, IFileSystemProviderWithFileReadWriteCapability, IFileSystemProviderWithOpenReadWriteCloseCapability, isFileOpenForWriteOptions, IStat } from 'vs/platform/files/common/files';
 import { readFileIntoStream } from 'vs/platform/files/common/io';
-import { AbstractNonRecursiveWatcherClient, AbstractUniversalWatcherClient, IDiskFileChange, ILogMessage } from 'vs/platform/files/common/watcher';
+import { AbstractNonRecursiveWatcherClient, AbstractUniversalWatcherClient, IDiskFileChange, IWatcherClientLoggerConfiguration } from 'vs/platform/files/common/watcher';
 import { ILogService } from 'vs/platform/log/common/log';
 import { AbstractDiskFileSystemProvider, IDiskFileSystemProviderOptions } from 'vs/platform/files/common/diskFileSystemProvider';
 import { toErrorMessage } from 'vs/base/common/errorMessage';
@@ -52,7 +52,7 @@ export class DiskFileSystemProvider extends AbstractDiskFileSystemProvider imple
 
 	constructor(
 		logService: ILogService,
-		options?: IDiskFileSystemProviderOptions
+		options: IDiskFileSystemProviderOptions
 	) {
 		super(logService, options);
 	}
@@ -684,18 +684,16 @@ export class DiskFileSystemProvider extends AbstractDiskFileSystemProvider imple
 
 	protected createUniversalWatcher(
 		onChange: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	): AbstractUniversalWatcherClient {
-		return new UniversalWatcherClient(changes => onChange(changes), msg => onLogMessage(msg), verboseLogging);
+		return new UniversalWatcherClient(changes => onChange(changes), loggerConfiguration);
 	}
 
 	protected createNonRecursiveWatcher(
 		onChange: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	): AbstractNonRecursiveWatcherClient {
-		return new NodeJSWatcherClient(changes => onChange(changes), msg => onLogMessage(msg), verboseLogging);
+		return new NodeJSWatcherClient(changes => onChange(changes), loggerConfiguration);
 	}
 
 	//#endregion

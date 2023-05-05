@@ -147,11 +147,11 @@ flakySuite('Disk File Service', function () {
 		service = new FileService(logService);
 		disposables.add(service);
 
-		fileProvider = new TestDiskFileSystemProvider(logService);
+		fileProvider = new TestDiskFileSystemProvider(logService, { logsHome: URI.file('tests').with({ scheme: 'vscode-tests' }) });
 		disposables.add(service.registerProvider(Schemas.file, fileProvider));
 		disposables.add(fileProvider);
 
-		testProvider = new TestDiskFileSystemProvider(logService);
+		testProvider = new TestDiskFileSystemProvider(logService, { logsHome: URI.file('tests').with({ scheme: 'vscode-tests' }) });
 		disposables.add(service.registerProvider(testSchema, testProvider));
 		disposables.add(testProvider);
 

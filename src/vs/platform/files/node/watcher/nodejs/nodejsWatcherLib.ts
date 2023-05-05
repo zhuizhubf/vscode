@@ -11,6 +11,7 @@ import { Disposable, DisposableStore, IDisposable, toDisposable } from 'vs/base/
 import { normalizeNFC } from 'vs/base/common/normalization';
 import { basename, dirname, join } from 'vs/base/common/path';
 import { isLinux, isMacintosh } from 'vs/base/common/platform';
+import { URI } from 'vs/base/common/uri';
 import { realcase } from 'vs/base/node/extpath';
 import { Promises } from 'vs/base/node/pfs';
 import { FileChangeType } from 'vs/platform/files/common/files';
@@ -428,8 +429,8 @@ export class NodeJSFileWatcherLibrary extends Disposable {
 		}
 	}
 
-	setVerboseLogging(verboseLogging: boolean): void {
-		this.verboseLogging = verboseLogging;
+	setLogging(logsHome: URI, verbose: boolean): void {
+		this.verboseLogging = verbose;
 	}
 
 	private error(error: string): void {

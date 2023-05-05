@@ -5,18 +5,17 @@
 
 import { DisposableStore, toDisposable } from 'vs/base/common/lifecycle';
 import { getDelayedChannel, ProxyChannel } from 'vs/base/parts/ipc/common/ipc';
-import { AbstractUniversalWatcherClient, IDiskFileChange, ILogMessage, IRecursiveWatcher } from 'vs/platform/files/common/watcher';
+import { AbstractUniversalWatcherClient, IDiskFileChange, IRecursiveWatcher, IWatcherClientLoggerConfiguration } from 'vs/platform/files/common/watcher';
 import { IUtilityProcessWorkerWorkbenchService } from 'vs/workbench/services/utilityProcess/electron-sandbox/utilityProcessWorkerWorkbenchService';
 
 export class UniversalWatcherClient extends AbstractUniversalWatcherClient {
 
 	constructor(
 		onFileChanges: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean,
+		loggerConfiguration: IWatcherClientLoggerConfiguration,
 		private readonly utilityProcessWorkerWorkbenchService: IUtilityProcessWorkerWorkbenchService
 	) {
-		super(onFileChanges, onLogMessage, verboseLogging);
+		super(onFileChanges, loggerConfiguration);
 
 		this.init();
 	}
@@ -43,10 +42,10 @@ export class UniversalWatcherClient extends AbstractUniversalWatcherClient {
 
 			onDidTerminate.then(({ reason }) => {
 				if (reason?.code === 0) {
-					this.trace(`terminated by itself with code ${reason.code}, signal: ${reason.signal}`);
-				} else {
-					this.onError(`terminated by itself unexpectedly with code ${reason?.code}, signal: ${reason?.signal}`);
+					return; // normal exit
 				}
+
+				this.onError(`terminated by itself unexpectedly with code ${reason?.code}, signal: ${reason?.signal}`);
 			});
 
 			return client.getChannel('watcher');

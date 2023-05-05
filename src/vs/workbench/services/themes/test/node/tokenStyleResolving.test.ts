@@ -15,7 +15,7 @@ import { DiskFileSystemProvider } from 'vs/platform/files/node/diskFileSystemPro
 import { FileAccess, Schemas } from 'vs/base/common/network';
 import { ExtensionResourceLoaderService } from 'vs/platform/extensionResourceLoader/common/extensionResourceLoaderService';
 import { ITokenStyle } from 'vs/platform/theme/common/themeService';
-import { mock, TestProductService } from 'vs/workbench/test/common/workbenchTestServices';
+import { mock, testLogsHome, TestProductService } from 'vs/workbench/test/common/workbenchTestServices';
 import { IRequestService } from 'vs/platform/request/common/request';
 import { IStorageService } from 'vs/platform/storage/common/storage';
 import { IEnvironmentService } from 'vs/platform/environment/common/environment';
@@ -90,7 +90,7 @@ suite('Themes - TokenStyleResolving', () => {
 
 	const extensionResourceLoaderService = new ExtensionResourceLoaderService(fileService, storageService, TestProductService, environmentService, configurationService, requestService);
 
-	const diskFileSystemProvider = new DiskFileSystemProvider(new NullLogService());
+	const diskFileSystemProvider = new DiskFileSystemProvider(new NullLogService(), { logsHome: testLogsHome });
 	fileService.registerProvider(Schemas.file, diskFileSystemProvider);
 
 	teardown(() => {

@@ -28,9 +28,11 @@ import { IResourceEditorInput } from 'vs/platform/editor/common/editor';
 import { EditorInput } from 'vs/workbench/common/editor/editorInput';
 import { IHistoryService } from 'vs/workbench/services/history/common/history';
 
+export const testLogsHome = URI.file('tests').with({ scheme: 'vscode-tests' });
+
 export class TestLoggerService extends AbstractLoggerService {
 	constructor(logsHome?: URI) {
-		super(LogLevel.Info, logsHome ?? URI.file('tests').with({ scheme: 'vscode-tests' }));
+		super(LogLevel.Info, logsHome ?? testLogsHome);
 	}
 	protected doCreateLogger(): ILogger { return new NullLogger(); }
 }

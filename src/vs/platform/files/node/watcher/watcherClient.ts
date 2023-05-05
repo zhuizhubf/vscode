@@ -7,16 +7,15 @@ import { DisposableStore } from 'vs/base/common/lifecycle';
 import { FileAccess } from 'vs/base/common/network';
 import { getNextTickChannel, ProxyChannel } from 'vs/base/parts/ipc/common/ipc';
 import { Client } from 'vs/base/parts/ipc/node/ipc.cp';
-import { AbstractUniversalWatcherClient, IDiskFileChange, ILogMessage, IUniversalWatcher } from 'vs/platform/files/common/watcher';
+import { AbstractUniversalWatcherClient, IDiskFileChange, IUniversalWatcher, IWatcherClientLoggerConfiguration } from 'vs/platform/files/common/watcher';
 
 export class UniversalWatcherClient extends AbstractUniversalWatcherClient {
 
 	constructor(
 		onFileChanges: (changes: IDiskFileChange[]) => void,
-		onLogMessage: (msg: ILogMessage) => void,
-		verboseLogging: boolean
+		loggerConfiguration: IWatcherClientLoggerConfiguration
 	) {
-		super(onFileChanges, onLogMessage, verboseLogging);
+		super(onFileChanges, loggerConfiguration);
 
 		this.init();
 	}

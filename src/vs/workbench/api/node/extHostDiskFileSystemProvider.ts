@@ -8,10 +8,12 @@ import { IExtHostConsumerFileSystem } from 'vs/workbench/api/common/extHostFileS
 import { Schemas } from 'vs/base/common/network';
 import { ILogService } from 'vs/platform/log/common/log';
 import { DiskFileSystemProvider } from 'vs/platform/files/node/diskFileSystemProvider';
+import { IExtHostInitDataService } from 'vs/workbench/api/common/extHostInitDataService';
 
 export class ExtHostDiskFileSystemProvider {
 
 	constructor(
+		@IExtHostInitDataService initData: IExtHostInitDataService,
 		@IExtHostConsumerFileSystem extHostConsumerFileSystem: IExtHostConsumerFileSystem,
 		@ILogService logService: ILogService
 	) {
@@ -19,46 +21,49 @@ export class ExtHostDiskFileSystemProvider {
 		// Register disk file system provider so that certain
 		// file operations can execute fast within the extension
 		// host without roundtripping.
-		extHostConsumerFileSystem.addFileSystemProvider(Schemas.file, new DiskFileSystemProviderAdapter(logService));
+		extHostConsumerFileSystem.addFileSystemProvider(Schemas.file, new DiskFileSystemProviderAdapter(initData, logService));
 	}
 }
 
 class DiskFileSystemProviderAdapter implements vscode.FileSystemProvider {
 
-	private readonly impl = new DiskFileSystemProvider(this.logService);
+	private readonly _impl = new DiskFileSystemProvider(this._logService, { logsHome: this._initData.logsLocation });
 
-	constructor(private readonly logService: ILogService) { }
+	constructor(
+		private readonly _initData: IExtHostInitDataService,
+		private readonly _logService: ILogService
+	) { }
 
 	stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-		return this.impl.stat(uri);
+		return this._impl.stat(uri);
 	}
 
 	readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-		return this.impl.readdir(uri);
+		return this._impl.readdir(uri);
 	}
 
 	createDirectory(uri: vscode.Uri): Promise<void> {
-		return this.impl.mkdir(uri);
+		return this._impl.mkdir(uri);
 	}
 
 	readFile(uri: vscode.Uri): Promise<Uint8Array> {
-		return this.impl.readFile(uri);
+		return this._impl.readFile(uri);
 	}
 
 	writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean }): Promise<void> {
-		return this.impl.writeFile(uri, content, { ...options, unlock: false });
+		return this._impl.writeFile(uri, content, { ...options, unlock: false });
 	}
 
 	delete(uri: vscode.Uri, options: { readonly recursive: boolean }): Promise<void> {
-		return this.impl.delete(uri, { ...options, useTrash: false });
+		return this._impl.delete(uri, { ...options, useTrash: false });
 	}
 
 	rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean }): Promise<void> {
-		return this.impl.rename(oldUri, newUri, options);
+		return this._impl.rename(oldUri, newUri, options);
 	}
 
 	copy(source: vscode.Uri, destination: vscode.Uri, options: { readonly overwrite: boolean }): Promise<void> {
-		return this.impl.copy(source, destination, options);
+		return this._impl.copy(source, destination, options);
 	}
 
 	// --- Not Implemented ---

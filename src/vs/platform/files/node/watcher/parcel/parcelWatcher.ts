@@ -21,6 +21,7 @@ import { realcaseSync, realpathSync } from 'vs/base/node/extpath';
 import { NodeJSFileWatcherLibrary } from 'vs/platform/files/node/watcher/nodejs/nodejsWatcherLib';
 import { FileChangeType } from 'vs/platform/files/common/files';
 import { IDiskFileChange, ILogMessage, coalesceEvents, IRecursiveWatchRequest, IRecursiveWatcher, parseWatcherPatterns } from 'vs/platform/files/common/watcher';
+import { URI } from 'vs/base/common/uri';
 
 export interface IParcelWatcherInstance {
 
@@ -626,8 +627,8 @@ export class ParcelWatcher extends Disposable implements IRecursiveWatcher {
 		return Array.from(requestTrie).map(([, request]) => request);
 	}
 
-	async setVerboseLogging(enabled: boolean): Promise<void> {
-		this.verboseLogging = enabled;
+	async setLogging(logsHome: URI, verbose: boolean): Promise<void> {
+		this.verboseLogging = verbose;
 	}
 
 	private trace(message: string) {
