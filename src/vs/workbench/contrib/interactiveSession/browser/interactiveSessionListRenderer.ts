@@ -16,7 +16,7 @@ import { Codicon } from 'vs/base/common/codicons';
 import { Emitter, Event } from 'vs/base/common/event';
 import { FuzzyScore } from 'vs/base/common/filters';
 import { IMarkdownString, MarkdownString } from 'vs/base/common/htmlContent';
-import { Disposable, DisposableStore, IDisposable } from 'vs/base/common/lifecycle';
+import { Disposable, DisposableStore, IDisposable, dispose } from 'vs/base/common/lifecycle';
 import { ResourceMap } from 'vs/base/common/map';
 import { FileAccess } from 'vs/base/common/network';
 import { ThemeIcon } from 'vs/base/common/themables';
@@ -36,6 +36,7 @@ import { ViewportSemanticTokensContribution } from 'vs/editor/contrib/semanticTo
 import { SmartSelectController } from 'vs/editor/contrib/smartSelect/browser/smartSelect';
 import { WordHighlighterContribution } from 'vs/editor/contrib/wordHighlighter/browser/wordHighlighter';
 import { localize } from 'vs/nls';
+import { IAccessibilityService } from 'vs/platform/accessibility/common/accessibility';
 import { IMenuEntryActionViewItemOptions, MenuEntryActionViewItem } from 'vs/platform/actions/browser/menuEntryActionViewItem';
 import { MenuWorkbenchToolBar } from 'vs/platform/actions/browser/toolbar';
 import { MenuId, MenuItemAction } from 'vs/platform/actions/common/actions';
@@ -110,6 +111,7 @@ export class InteractiveListItemRenderer extends Disposable implements ITreeRend
 		@ICommandService private readonly commandService: ICommandService,
 		@IContextKeyService private readonly contextKeyService: IContextKeyService,
 		@IInteractiveSessionService private readonly interactiveSessionService: IInteractiveSessionService,
+		@IAccessibilityService private readonly accessibilityService: IAccessibilityService,
 	) {
 		super();
 		this.renderer = this.instantiationService.createInstance(MarkdownRenderer, {});
@@ -377,7 +379,18 @@ export class InteractiveListItemRenderer extends Disposable implements ITreeRend
 		return !!isFullyRendered;
 	}
 
+	private renderForScreenReader(text: string, element: InteractiveTreeItem, templateData: IInteractiveListItemTemplate): IMarkdownRenderResult {
+		const disposablesList: IDisposable[] = [];
+		let codeBlockIndex = 0;
+		const ref = this.renderCodeBlock({ languageId: 'text', text, codeBlockIndex: codeBlockIndex++, element, parentContextKeyService: templateData.contextKeyService }, new DisposableStore());
+		disposablesList.push(ref);
+		return { element: ref.object.element, dispose: () => dispose(disposablesList) };
+	}
+
 	private renderMarkdown(markdown: IMarkdownString, element: InteractiveTreeItem, disposables: DisposableStore, templateData: IInteractiveListItemTemplate, fillInIncompleteTokens = false): IMarkdownRenderResult {
+		if (this.accessibilityService.isScreenReaderOptimized()) {
+			return this.renderForScreenReader(markdown.value, element, templateData);
+		}
 		const disposablesList: IDisposable[] = [];
 		let codeBlockIndex = 0;
 
