@@ -382,7 +382,7 @@ export class InteractiveListItemRenderer extends Disposable implements ITreeRend
 	private renderForScreenReader(text: string, element: InteractiveTreeItem, templateData: IInteractiveListItemTemplate): IMarkdownRenderResult {
 		const disposablesList: IDisposable[] = [];
 		let codeBlockIndex = 0;
-		const ref = this.renderCodeBlock({ languageId: 'text', text, codeBlockIndex: codeBlockIndex++, element, parentContextKeyService: templateData.contextKeyService }, new DisposableStore());
+		const ref = this.renderCodeBlock({ languageId: 'text', text, codeBlockIndex: codeBlockIndex++, element, parentContextKeyService: templateData.contextKeyService, screenReaderContext: true, }, new DisposableStore());
 		disposablesList.push(ref);
 		return { element: ref.object.element, dispose: () => dispose(disposablesList) };
 	}
@@ -528,6 +528,7 @@ interface IInteractiveResultCodeBlockData {
 	codeBlockIndex: number;
 	element: InteractiveTreeItem;
 	parentContextKeyService: IContextKeyService;
+	screenReaderContext?: boolean;
 }
 
 interface IInteractiveResultCodeBlockPart {
@@ -554,7 +555,7 @@ class CodeBlockPart extends Disposable implements IInteractiveResultCodeBlockPar
 	public readonly onDidChangeContentHeight = this._onDidChangeContentHeight.event;
 
 	private readonly editor: CodeEditorWidget;
-	private readonly toolbar: MenuWorkbenchToolBar;
+	private toolbar: MenuWorkbenchToolBar;
 	private readonly contextKeyService: IContextKeyService;
 
 	public readonly textModel: ITextModel;
@@ -564,7 +565,7 @@ class CodeBlockPart extends Disposable implements IInteractiveResultCodeBlockPar
 
 	constructor(
 		private readonly options: InteractiveSessionEditorOptions,
-		@IInstantiationService instantiationService: IInstantiationService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IContextKeyService contextKeyService: IContextKeyService,
 		@ILanguageService private readonly languageService: ILanguageService,
 		@IModelService private readonly modelService: IModelService,
@@ -694,12 +695,23 @@ class CodeBlockPart extends Disposable implements IInteractiveResultCodeBlockPar
 			codeBlockInfosByModelUri.delete(this.textModel.uri);
 		}
 
-		this.toolbar.context = <IInteractiveSessionCodeBlockActionContext>{
-			code: data.text,
-			codeBlockIndex: data.codeBlockIndex,
-			element: data.element,
-			languageId: vscodeLanguageId
-		};
+		const code = data.screenReaderContext ? extractCodeBlockFromText(data.text) : data.text;
+
+		if (code) {
+			this.toolbar = this._register(this.instantiationService.createInstance(MenuWorkbenchToolBar, this.element, MenuId.InteractiveSessionCodeBlock, {
+				menuOptions: {
+					shouldForwardArgs: true
+				}
+			}));
+			this.toolbar.context = <IInteractiveSessionCodeBlockActionContext>{
+				code,
+				codeBlockIndex: data.codeBlockIndex,
+				element: data.element,
+				languageId: vscodeLanguageId
+			};
+		} else {
+			this.toolbar.dispose();
+		}
 	}
 
 	private fixCodeText(text: string, languageId: string): string {
@@ -744,6 +756,15 @@ class CodeBlockPart extends Disposable implements IInteractiveResultCodeBlockPar
 	private setLanguage(vscodeLanguageId: string | undefined): void {
 		this.textModel.setLanguage(vscodeLanguageId ?? PLAINTEXT_LANGUAGE_ID);
 	}
+}
+
+function extractCodeBlockFromText(text: string): string | undefined {
+	const regex = /```([\w-]+)?\n([\s\S]*?)\n```/;
+	const match = new MarkdownString(text).value.match(regex);
+	if (match) {
+		return match[2];
+	}
+	return undefined;
 }
 
 interface IDisposableReference<T> extends IDisposable {
