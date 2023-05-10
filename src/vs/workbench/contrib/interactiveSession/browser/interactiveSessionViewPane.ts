@@ -56,7 +56,7 @@ export class InteractiveSessionViewPane extends ViewPane {
 		@IThemeService themeService: IThemeService,
 		@ITelemetryService telemetryService: ITelemetryService,
 		@IStorageService private readonly storageService: IStorageService,
-		@IInteractiveSessionService private readonly interactiveSessionService: IInteractiveSessionService
+		@IInteractiveSessionService private readonly interactiveSessionService: IInteractiveSessionService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService, instantiationService, openerService, themeService, telemetryService);
 
