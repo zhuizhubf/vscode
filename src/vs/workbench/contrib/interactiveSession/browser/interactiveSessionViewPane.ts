@@ -5,6 +5,7 @@
 
 import { CancellationToken } from 'vs/base/common/cancellation';
 import { DisposableStore } from 'vs/base/common/lifecycle';
+import { IAccessibilityService } from 'vs/platform/accessibility/common/accessibility';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
 import { IContextKeyService } from 'vs/platform/contextkey/common/contextkey';
 import { IContextMenuService } from 'vs/platform/contextview/browser/contextView';
@@ -57,6 +58,7 @@ export class InteractiveSessionViewPane extends ViewPane {
 		@ITelemetryService telemetryService: ITelemetryService,
 		@IStorageService private readonly storageService: IStorageService,
 		@IInteractiveSessionService private readonly interactiveSessionService: IInteractiveSessionService,
+		@IAccessibilityService private readonly accessibilityService: IAccessibilityService
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService, instantiationService, openerService, themeService, telemetryService);
 
@@ -94,6 +96,7 @@ export class InteractiveSessionViewPane extends ViewPane {
 		this._register(this.onDidChangeBodyVisibility(visible => {
 			this._widget.setVisible(visible);
 		}));
+		this._register(this.accessibilityService.onDidChangeScreenReaderOptimized(() => this.updateModel(initialModel)));
 		this._widget.render(parent);
 
 		const initialModel = this.viewState.sessionId ? this.interactiveSessionService.retrieveSession(this.viewState.sessionId) : undefined;
