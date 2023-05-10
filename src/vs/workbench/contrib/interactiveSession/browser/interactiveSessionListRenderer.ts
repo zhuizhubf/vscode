@@ -694,10 +694,10 @@ class CodeBlockPart extends Disposable implements IInteractiveResultCodeBlockPar
 		} else {
 			codeBlockInfosByModelUri.delete(this.textModel.uri);
 		}
+		const codeBlocks = getCodeBlocks(data.text);
+		const code = data.screenReaderContext && codeBlocks.length > 0 ? codeBlocks.join('\n\n') : data.text;
 
-		const code = data.screenReaderContext ? extractCodeBlockFromText(data.text) : data.text;
-
-		if (code) {
+		if (!data.screenReaderContext || codeBlocks.length > 0) {
 			this.toolbar = this._register(this.instantiationService.createInstance(MenuWorkbenchToolBar, this.element, MenuId.InteractiveSessionCodeBlock, {
 				menuOptions: {
 					shouldForwardArgs: true
@@ -758,13 +758,15 @@ class CodeBlockPart extends Disposable implements IInteractiveResultCodeBlockPar
 	}
 }
 
-function extractCodeBlockFromText(text: string): string | undefined {
-	const regex = /```([\w-]+)?\n([\s\S]*?)\n```/;
-	const match = new MarkdownString(text).value.match(regex);
-	if (match) {
-		return match[2];
+function getCodeBlocks(text: string): string[] {
+	const codeBlocks = [];
+	const regex = /```([\s\S]*?)```/g;
+	let match;
+	const markdown = new MarkdownString(text).value;
+	while ((match = regex.exec(markdown)) !== null) {
+		codeBlocks.push(match[1]);
 	}
-	return undefined;
+	return codeBlocks;
 }
 
 interface IDisposableReference<T> extends IDisposable {
