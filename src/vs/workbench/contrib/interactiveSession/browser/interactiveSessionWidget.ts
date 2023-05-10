@@ -13,6 +13,7 @@ import { URI } from 'vs/base/common/uri';
 import 'vs/css!./media/interactiveSession';
 import { ICodeEditor } from 'vs/editor/browser/editorBrowser';
 import { localize } from 'vs/nls';
+import { IAccessibilityService } from 'vs/platform/accessibility/common/accessibility';
 import { MenuId } from 'vs/platform/actions/common/actions';
 import { IContextKey, IContextKeyService } from 'vs/platform/contextkey/common/contextkey';
 import { IContextMenuService } from 'vs/platform/contextview/browser/contextView';
@@ -131,12 +132,17 @@ export class InteractiveSessionWidget extends Disposable implements IInteractive
 		@IInteractiveSessionService private readonly interactiveSessionService: IInteractiveSessionService,
 		@IInteractiveSessionWidgetService interactiveSessionWidgetService: IInteractiveSessionWidgetService,
 		@IContextMenuService private readonly contextMenuService: IContextMenuService,
+		@IAccessibilityService private readonly accessibilityService: IAccessibilityService
 	) {
 		super();
 		CONTEXT_IN_INTERACTIVE_SESSION.bindTo(contextKeyService).set(true);
 		this.requestInProgress = CONTEXT_INTERACTIVE_REQUEST_IN_PROGRESS.bindTo(contextKeyService);
 
 		this._register((interactiveSessionWidgetService as InteractiveSessionWidgetService).register(this));
+		this._register(this.accessibilityService.onDidChangeScreenReaderOptimized(() => {
+			this.onDidChangeItems();
+			revealLastElement(this.tree);
+		}));
 	}
 
 	get providerId(): string {
