@@ -89,7 +89,7 @@ export class DiffReview extends Disposable {
 
 	private static _ttPolicy = window.trustedTypes?.createPolicy('diffReview', { createHTML: value => value });
 
-	private readonly _diffEditor: DiffEditorWidget;
+	private readonly _diffEditor?: DiffEditorWidget;
 	private _isVisible: boolean;
 	public readonly shadow: FastDomNode<HTMLElement>;
 	private readonly _actionBar: ActionBar;
@@ -101,7 +101,10 @@ export class DiffReview extends Disposable {
 	private _currentDiff: Diff | null;
 
 	constructor(
-		diffEditor: DiffEditorWidget,
+		diffEditor: DiffEditorWidget | undefined,
+		private readonly _originalModel: ITextModel | undefined,
+		private readonly _modifiedModel: ITextModel | undefined,
+		private readonly _lastChanges: ILineChange[] | undefined,
 		@ILanguageService private readonly _languageService: ILanguageService,
 		@IAudioCueService private readonly _audioCueService: IAudioCueService,
 		@IConfigurationService private readonly _configurationService: IConfigurationService
@@ -130,19 +133,21 @@ export class DiffReview extends Disposable {
 		this.scrollbar = this._register(new DomScrollableElement(this._content.domNode, {}));
 		this.domNode.domNode.appendChild(this.scrollbar.getDomNode());
 
-		this._register(diffEditor.onDidUpdateDiff(() => {
-			if (!this._isVisible) {
-				return;
-			}
-			this._diffs = this._compute();
-			this._render();
-		}));
-		this._register(diffEditor.getModifiedEditor().onDidChangeCursorPosition(() => {
-			if (!this._isVisible) {
-				return;
-			}
-			this._render();
-		}));
+		if (diffEditor) {
+			this._register(diffEditor.onDidUpdateDiff(() => {
+				if (!this._isVisible) {
+					return;
+				}
+				this._diffs = this._compute();
+				this._render();
+			}));
+			this._register(diffEditor.getModifiedEditor().onDidChangeCursorPosition(() => {
+				if (!this._isVisible) {
+					return;
+				}
+				this._render();
+			}));
+		}
 		this._register(dom.addStandardDisposableListener(this.domNode.domNode, 'click', (e) => {
 			e.preventDefault();
 
@@ -184,11 +189,16 @@ export class DiffReview extends Disposable {
 		}));
 		this._register(this._configurationService.onDidChangeConfiguration(e => {
 			if (e.affectsConfiguration('accessibility.verbosity.diff-editor')) {
-				this._diffEditor.updateOptions({ accessibilityVerbose: this._configurationService.getValue('accessibility.verbosity.diff-editor') });
+				this._diffEditor?.updateOptions({ accessibilityVerbose: this._configurationService.getValue('accessibility.verbosity.diff-editor') });
 			}
 		}));
 		this._diffs = [];
 		this._currentDiff = null;
+	}
+
+	public update(): void {
+		this._diffs = this._compute();
+		this._render();
 	}
 
 	public prev(): void {
@@ -207,8 +217,8 @@ export class DiffReview extends Disposable {
 				}
 			}
 			index = (this._diffs.length + currentIndex - 1);
-		} else {
-			index = this._findDiffIndex(this._diffEditor.getPosition()!);
+		} else if (this._diffEditor) {
+			index = this._diffEditor.getPosition() !== undefined ? this._findDiffIndex(this._diffEditor.getPosition()!) : 0;
 		}
 
 		if (this._diffs.length === 0) {
@@ -218,10 +228,10 @@ export class DiffReview extends Disposable {
 
 		index = index % this._diffs.length;
 		const entries = this._diffs[index].entries;
-		this._diffEditor.setPosition(new Position(entries[0].modifiedLineStart, 1));
-		this._diffEditor.setSelection({ startColumn: 1, startLineNumber: entries[0].modifiedLineStart, endColumn: Constants.MAX_SAFE_SMALL_INTEGER, endLineNumber: entries[entries.length - 1].modifiedLineEnd });
+		this._diffEditor?.setPosition(new Position(entries[0].modifiedLineStart, 1));
+		this._diffEditor?.setSelection({ startColumn: 1, startLineNumber: entries[0].modifiedLineStart, endColumn: Constants.MAX_SAFE_SMALL_INTEGER, endLineNumber: entries[entries.length - 1].modifiedLineEnd });
 		this._isVisible = true;
-		this._diffEditor.doLayout();
+		this._diffEditor?.doLayout();
 		this._render();
 		this._goToRow(this._getPrevRow(), 'previous');
 	}
@@ -242,8 +252,8 @@ export class DiffReview extends Disposable {
 				}
 			}
 			index = (currentIndex + 1);
-		} else {
-			index = this._findDiffIndex(this._diffEditor.getPosition()!);
+		} else if (this._diffEditor) {
+			index = this._diffEditor.getPosition() !== undefined ? this._findDiffIndex(this._diffEditor.getPosition()!) : 0;
 		}
 
 		if (this._diffs.length === 0) {
@@ -253,10 +263,10 @@ export class DiffReview extends Disposable {
 
 		index = index % this._diffs.length;
 		const entries = this._diffs[index].entries;
-		this._diffEditor.setPosition(new Position(entries[0].modifiedLineStart, 1));
-		this._diffEditor.setSelection({ startColumn: 1, startLineNumber: entries[0].modifiedLineStart, endColumn: Constants.MAX_SAFE_SMALL_INTEGER, endLineNumber: entries[entries.length - 1].modifiedLineEnd });
+		this._diffEditor?.setPosition(new Position(entries[0].modifiedLineStart, 1));
+		this._diffEditor?.setSelection({ startColumn: 1, startLineNumber: entries[0].modifiedLineStart, endColumn: Constants.MAX_SAFE_SMALL_INTEGER, endLineNumber: entries[entries.length - 1].modifiedLineEnd });
 		this._isVisible = true;
-		this._diffEditor.doLayout();
+		this._diffEditor?.doLayout();
 		this._render();
 		this._goToRow(this._getNextRow(), 'next');
 	}
@@ -273,16 +283,16 @@ export class DiffReview extends Disposable {
 		this.hide();
 
 		if (jumpToLineNumber !== -1) {
-			this._diffEditor.setPosition(new Position(jumpToLineNumber, 1));
-			this._diffEditor.revealPosition(new Position(jumpToLineNumber, 1), ScrollType.Immediate);
+			this._diffEditor?.setPosition(new Position(jumpToLineNumber, 1));
+			this._diffEditor?.revealPosition(new Position(jumpToLineNumber, 1), ScrollType.Immediate);
 		}
 	}
 
 	private hide(): void {
 		this._isVisible = false;
-		this._diffEditor.updateOptions({ readOnly: false });
-		this._diffEditor.focus();
-		this._diffEditor.doLayout();
+		this._diffEditor?.updateOptions({ readOnly: false });
+		this._diffEditor?.focus();
+		this._diffEditor?.doLayout();
 		this._render();
 	}
 
@@ -363,12 +373,12 @@ export class DiffReview extends Disposable {
 	}
 
 	private _compute(): Diff[] {
-		const lineChanges = this._diffEditor.getLineChanges();
+		const lineChanges = this._diffEditor?.getLineChanges() || this._lastChanges;
 		if (!lineChanges || lineChanges.length === 0) {
 			return [];
 		}
-		const originalModel = this._diffEditor.getOriginalEditor().getModel();
-		const modifiedModel = this._diffEditor.getModifiedEditor().getModel();
+		const originalModel = this._diffEditor?.getOriginalEditor().getModel() || this._originalModel;
+		const modifiedModel = this._diffEditor?.getModifiedEditor().getModel() || this._modifiedModel;
 
 		if (!originalModel || !modifiedModel) {
 			return [];
@@ -545,12 +555,11 @@ export class DiffReview extends Disposable {
 	}
 
 	private _render(): void {
+		const originalOptions = this._diffEditor?.getOriginalEditor().getOptions() || {} as IComputedEditorOptions;
+		const modifiedOptions = this._diffEditor?.getModifiedEditor().getOptions() || {} as IComputedEditorOptions;
 
-		const originalOptions = this._diffEditor.getOriginalEditor().getOptions();
-		const modifiedOptions = this._diffEditor.getModifiedEditor().getOptions();
-
-		const originalModel = this._diffEditor.getOriginalEditor().getModel();
-		const modifiedModel = this._diffEditor.getModifiedEditor().getModel();
+		const originalModel = this._diffEditor?.getOriginalEditor().getModel() || this._originalModel;
+		const modifiedModel = this._diffEditor?.getModifiedEditor().getModel() || this._modifiedModel;
 
 		const originalModelOpts = originalModel!.getOptions();
 		const modifiedModelOpts = modifiedModel!.getOptions();
@@ -562,8 +571,8 @@ export class DiffReview extends Disposable {
 			return;
 		}
 
-		this._diffEditor.updateOptions({ readOnly: true });
-		const diffIndex = this._findDiffIndex(this._diffEditor.getPosition()!);
+		this._diffEditor?.updateOptions({ readOnly: true });
+		const diffIndex = this._findDiffIndex(this._diffEditor?.getPosition()!);
 
 		if (this._diffs[diffIndex] === this._currentDiff) {
 			return;

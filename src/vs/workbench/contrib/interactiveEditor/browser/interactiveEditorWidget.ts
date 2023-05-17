@@ -44,6 +44,8 @@ import { invertLineRange, lineRangeAsRange } from 'vs/workbench/contrib/interact
 import { ICodeEditorViewState, ScrollType } from 'vs/editor/common/editorCommon';
 import { LineRange } from 'vs/editor/common/core/lineRange';
 import { SubmenuItemAction } from 'vs/platform/actions/common/actions';
+import { DiffReview } from 'vs/editor/browser/widget/diffReview';
+import { IAccessibilityService } from 'vs/platform/accessibility/common/accessibility';
 
 const _inputEditorOptions: IEditorConstructionOptions = {
 	padding: { top: 3, bottom: 2 },
@@ -173,6 +175,7 @@ export class InteractiveEditorWidget {
 		@IContextKeyService private readonly _contextKeyService: IContextKeyService,
 		@ILanguageFeaturesService private readonly _languageFeaturesService: ILanguageFeaturesService,
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
+		@IAccessibilityService private readonly _accessibilityService: IAccessibilityService
 	) {
 
 		// input editor logic
@@ -435,33 +438,84 @@ export class InteractiveEditorWidget {
 		const languageSelection: ILanguageSelection = { languageId: textModelv0.getLanguageId(), onDidChange: Event.None };
 		const modified = this._modelService.createModel(createTextBufferFactoryFromSnapshot(textModelv0.createSnapshot()), languageSelection, undefined, true);
 		modified.applyEdits(edits, false);
-		this._previewDiffEditor.setModel({ original: textModelv0, modified });
+		if (this._accessibilityService.isScreenReaderOptimized()) {
 
-		// joined ranges
-		let originalLineRange = changes[0].originalRange;
-		let modifiedLineRange = changes[0].modifiedRange;
-		for (let i = 1; i < changes.length; i++) {
-			originalLineRange = originalLineRange.join(changes[i].originalRange);
-			modifiedLineRange = modifiedLineRange.join(changes[i].modifiedRange);
+			const lineChanges = changes.map(m => {
+				// TODO don't do this translation, but use the diff result directly
+				let originalStartLineNumber: number;
+				let originalEndLineNumber: number;
+				let modifiedStartLineNumber: number;
+				let modifiedEndLineNumber: number;
+				let innerChanges = m.innerChanges;
+
+				if (m.originalRange.isEmpty) {
+					// Insertion
+					originalStartLineNumber = m.originalRange.startLineNumber - 1;
+					originalEndLineNumber = 0;
+					innerChanges = undefined;
+				} else {
+					originalStartLineNumber = m.originalRange.startLineNumber;
+					originalEndLineNumber = m.originalRange.endLineNumberExclusive - 1;
+				}
+
+				if (m.modifiedRange.isEmpty) {
+					// Deletion
+					modifiedStartLineNumber = m.modifiedRange.startLineNumber - 1;
+					modifiedEndLineNumber = 0;
+					innerChanges = undefined;
+				} else {
+					modifiedStartLineNumber = m.modifiedRange.startLineNumber;
+					modifiedEndLineNumber = m.modifiedRange.endLineNumberExclusive - 1;
+				}
+
+				return {
+					originalStartLineNumber,
+					originalEndLineNumber,
+					modifiedStartLineNumber,
+					modifiedEndLineNumber,
+					charChanges: innerChanges?.map(m => ({
+						originalStartLineNumber: m.originalRange.startLineNumber,
+						originalStartColumn: m.originalRange.startColumn,
+						originalEndLineNumber: m.originalRange.endLineNumber,
+						originalEndColumn: m.originalRange.endColumn,
+						modifiedStartLineNumber: m.modifiedRange.startLineNumber,
+						modifiedStartColumn: m.modifiedRange.startColumn,
+						modifiedEndLineNumber: m.modifiedRange.endLineNumber,
+						modifiedEndColumn: m.modifiedRange.endColumn,
+					}))
+				};
+			});
+			const diffReview = this._instantiationService.createInstance(DiffReview, undefined, textModelv0, modified, lineChanges);
+			diffReview.next();
+			diffReview.update();
+		} else {
+			this._previewDiffEditor.setModel({ original: textModelv0, modified });
+
+			// joined ranges
+			let originalLineRange = changes[0].originalRange;
+			let modifiedLineRange = changes[0].modifiedRange;
+			for (let i = 1; i < changes.length; i++) {
+				originalLineRange = originalLineRange.join(changes[i].originalRange);
+				modifiedLineRange = modifiedLineRange.join(changes[i].modifiedRange);
+			}
+
+			// apply extra padding
+			const pad = 3;
+			const newStartLine = Math.max(1, originalLineRange.startLineNumber - pad);
+			modifiedLineRange = new LineRange(newStartLine, modifiedLineRange.endLineNumberExclusive);
+			originalLineRange = new LineRange(newStartLine, originalLineRange.endLineNumberExclusive);
+
+			const newEndLineModified = Math.min(modifiedLineRange.endLineNumberExclusive + pad, modified.getLineCount());
+			modifiedLineRange = new LineRange(modifiedLineRange.startLineNumber, newEndLineModified);
+			const newEndLineOriginal = Math.min(originalLineRange.endLineNumberExclusive + pad, textModelv0.getLineCount());
+			originalLineRange = new LineRange(originalLineRange.startLineNumber, newEndLineOriginal);
+
+			const hiddenOriginal = invertLineRange(originalLineRange, textModelv0);
+			const hiddenModified = invertLineRange(modifiedLineRange, modified);
+			this._previewDiffEditor.getOriginalEditor().setHiddenAreas(hiddenOriginal.map(lineRangeAsRange), 'diff-hidden');
+			this._previewDiffEditor.getModifiedEditor().setHiddenAreas(hiddenModified.map(lineRangeAsRange), 'diff-hidden');
+			this._previewDiffEditor.revealLine(modifiedLineRange.startLineNumber, ScrollType.Immediate);
 		}
-
-		// apply extra padding
-		const pad = 3;
-		const newStartLine = Math.max(1, originalLineRange.startLineNumber - pad);
-		modifiedLineRange = new LineRange(newStartLine, modifiedLineRange.endLineNumberExclusive);
-		originalLineRange = new LineRange(newStartLine, originalLineRange.endLineNumberExclusive);
-
-		const newEndLineModified = Math.min(modifiedLineRange.endLineNumberExclusive + pad, modified.getLineCount());
-		modifiedLineRange = new LineRange(modifiedLineRange.startLineNumber, newEndLineModified);
-		const newEndLineOriginal = Math.min(originalLineRange.endLineNumberExclusive + pad, textModelv0.getLineCount());
-		originalLineRange = new LineRange(originalLineRange.startLineNumber, newEndLineOriginal);
-
-		const hiddenOriginal = invertLineRange(originalLineRange, textModelv0);
-		const hiddenModified = invertLineRange(modifiedLineRange, modified);
-		this._previewDiffEditor.getOriginalEditor().setHiddenAreas(hiddenOriginal.map(lineRangeAsRange), 'diff-hidden');
-		this._previewDiffEditor.getModifiedEditor().setHiddenAreas(hiddenModified.map(lineRangeAsRange), 'diff-hidden');
-		this._previewDiffEditor.revealLine(modifiedLineRange.startLineNumber, ScrollType.Immediate);
-
 		this._onDidChangeHeight.fire();
 	}
 
