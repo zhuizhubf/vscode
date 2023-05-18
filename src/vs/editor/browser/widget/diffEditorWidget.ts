@@ -242,6 +242,8 @@ export class DiffEditorWidget extends Disposable implements editorBrowser.IDiffE
 
 	private isEmbeddedDiffEditorKey: IContextKey<boolean>;
 
+	get diffReviewOnly(): boolean { return this._options.diffReviewOnly ?? false; }
+
 	constructor(
 		domElement: HTMLElement,
 		options: Readonly<editorBrowser.IDiffEditorConstructionOptions>,
@@ -289,7 +291,8 @@ export class DiffEditorWidget extends Disposable implements editorBrowser.IDiffE
 			renderOverviewRuler: true,
 			diffWordWrap: 'inherit',
 			diffAlgorithm: 'advanced',
-			accessibilityVerbose: false
+			accessibilityVerbose: false,
+			diffReviewOnly: false
 		});
 
 		this.isEmbeddedDiffEditorKey = EditorContextKeys.isEmbeddedDiffEditor.bindTo(this._contextKeyService);
@@ -2780,6 +2783,7 @@ function validateDiffEditorOptions(options: Readonly<IDiffEditorOptions>, defaul
 		diffWordWrap: validateDiffWordWrap(options.diffWordWrap, defaults.diffWordWrap),
 		diffAlgorithm: validateStringSetOption(options.diffAlgorithm, defaults.diffAlgorithm, ['legacy', 'advanced'], { 'smart': 'legacy', 'experimental': 'advanced' }),
 		accessibilityVerbose: validateBooleanOption(options.accessibilityVerbose, defaults.accessibilityVerbose),
+		diffReviewOnly: validateBooleanOption(options.diffReviewOnly, defaults.diffReviewOnly)
 	};
 }
 

@@ -106,7 +106,8 @@ const _previewEditorEditorOptions: IDiffEditorConstructionOptions = {
 	modifiedAriaLabel: localize('original', 'Original'),
 	diffAlgorithm: 'advanced',
 	readOnly: true,
-	isInEmbeddedEditor: true
+	isInEmbeddedEditor: true,
+	diffReviewOnly: true
 };
 
 export interface InteractiveEditorWidgetViewState {
@@ -490,6 +491,14 @@ export class InteractiveEditorWidget {
 		this._previewDiffEditor.getModifiedEditor().setHiddenAreas(hiddenModified.map(lineRangeAsRange), 'diff-hidden');
 		this._previewDiffEditor.revealLine(modifiedLineRange.startLineNumber, ScrollType.Immediate);
 
+		this._store.add(this._previewDiffEditor.onDidUpdateDiff(() => {
+			if (this._accessibilityService.isScreenReaderOptimized()) {
+				this._previewDiffEditor.getModifiedEditor()?.getDomNode()?.querySelector('.previewDiff textarea.inputarea')?.setAttribute('disabled', '');
+				this._previewDiffEditor.getOriginalEditor()?.getDomNode()?.querySelector('.previewDiff textarea.inputarea')?.setAttribute('disabled', '');
+				this._previewDiffEditor.diffReviewNext();
+				this._inputEditor.focus();
+			}
+		}));
 		this._onDidChangeHeight.fire();
 	}
 

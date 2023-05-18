@@ -3860,6 +3860,11 @@ declare namespace monaco.editor {
 		 * Whether the diff editor aria label should be verbose.
 		 */
 		accessibilityVerbose?: boolean;
+		/**
+		 * Whether only the DiffReview should be rendered
+		 * and not the underlying original/modified editors.
+		 */
+		diffReviewOnly?: boolean;
 	}
 
 	/**
