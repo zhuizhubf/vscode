@@ -27,7 +27,7 @@ class TestTaskService implements Partial<ITaskService> {
 }
 
 class TestAudioCueService implements Partial<IAudioCueService> {
-	async playAudioCue(cue: AudioCue): Promise<void> {
+	async playAudioCue(cue: AudioCue): Promise<HTMLAudioElement | undefined> {
 		return;
 	}
 }

@@ -33,6 +33,7 @@ import { IChatContributionService } from 'vs/workbench/contrib/chat/common/chatC
 import { IChatModel } from 'vs/workbench/contrib/chat/common/chatModel';
 import { IChatReplyFollowup, IChatService, ISlashCommand } from 'vs/workbench/contrib/chat/common/chatService';
 import { IChatResponseViewModel, ChatViewModel, isRequestVM, isResponseVM, isWelcomeVM } from 'vs/workbench/contrib/chat/common/chatViewModel';
+import { AudioCue, IAudioCueService } from 'vs/platform/audioCues/browser/audioCueService';
 
 const $ = dom.$;
 
@@ -115,6 +116,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		@IChatService private readonly chatService: IChatService,
 		@IChatWidgetService chatWidgetService: IChatWidgetService,
 		@IContextMenuService private readonly contextMenuService: IContextMenuService,
+		@IAudioCueService private readonly _audioCueService: IAudioCueService
 	) {
 		super();
 		CONTEXT_IN_CHAT_SESSION.bindTo(contextKeyService).set(true);
@@ -378,17 +380,32 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			}
 
 			const input = query ?? editorValue;
-			const result = await this.chatService.sendRequest(this.viewModel.sessionId, input);
-			if (result) {
-				revealLastElement(this.tree);
-				this.inputPart.acceptInput(query);
-				result.responseCompletePromise.then(() => {
-					const responses = this.viewModel?.getItems().filter(isResponseVM);
-					const lastResponse = responses?.[responses.length - 1];
-					if (lastResponse) {
-						alert(lastResponse.response.value);
+
+			while (true) {
+				const cue = await this._audioCueService.playAudioCue(AudioCue.taskCompleted, true);
+				if (cue) {
+					cue.loop = true;
+					cue.currentTime = 0;
+					cue.play();
+				}
+				try {
+					const result = await this.chatService.sendRequest(this.viewModel.sessionId, input);
+					if (result) {
+						revealLastElement(this.tree);
+						this.inputPart.acceptInput(query);
+						result.responseCompletePromise.then(() => {
+							const responses = this.viewModel?.getItems().filter(isResponseVM);
+							const lastResponse = responses?.[responses.length - 1];
+							if (lastResponse) {
+								alert(lastResponse.response.value);
+							}
+						});
+						if (cue) {
+							cue.loop = false;
+						}
+						break;
 					}
-				});
+				} catch { }
 			}
 		}
 	}

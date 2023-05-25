@@ -16,12 +16,12 @@ export const IAudioCueService = createDecorator<IAudioCueService>('audioCue');
 
 export interface IAudioCueService {
 	readonly _serviceBrand: undefined;
-	playAudioCue(cue: AudioCue, allowManyInParallel?: boolean): Promise<void>;
+	playAudioCue(cue: AudioCue, allowManyInParallel?: boolean): Promise<HTMLAudioElement | undefined>;
 	playAudioCues(cues: AudioCue[]): Promise<void>;
 	isEnabled(cue: AudioCue): boolean;
 	onEnabledChanged(cue: AudioCue): Event<void>;
 
-	playSound(cue: Sound, allowManyInParallel?: boolean): Promise<void>;
+	playSound(cue: Sound, allowManyInParallel?: boolean): Promise<HTMLAudioElement | undefined>;
 }
 
 export class AudioCueService extends Disposable implements IAudioCueService {
@@ -39,10 +39,11 @@ export class AudioCueService extends Disposable implements IAudioCueService {
 		super();
 	}
 
-	public async playAudioCue(cue: AudioCue, allowManyInParallel = false): Promise<void> {
+	public async playAudioCue(cue: AudioCue, allowManyInParallel = false): Promise<HTMLAudioElement | undefined> {
 		if (this.isEnabled(cue)) {
-			await this.playSound(cue.sound, allowManyInParallel);
+			return await this.playSound(cue.sound, allowManyInParallel);
 		}
+		return;
 	}
 
 	public async playAudioCues(cues: AudioCue[]): Promise<void> {
@@ -62,7 +63,7 @@ export class AudioCueService extends Disposable implements IAudioCueService {
 
 	private readonly playingSounds = new Set<Sound>();
 
-	public async playSound(sound: Sound, allowManyInParallel = false): Promise<void> {
+	public async playSound(sound: Sound, allowManyInParallel = false): Promise<HTMLAudioElement | undefined> {
 		if (!allowManyInParallel && this.playingSounds.has(sound)) {
 			return;
 		}
@@ -76,15 +77,18 @@ export class AudioCueService extends Disposable implements IAudioCueService {
 				sound.volume = this.getVolumeInPercent() / 100;
 				sound.currentTime = 0;
 				await sound.play();
+				return sound;
 			} else {
 				const playedSound = await playAudio(url, this.getVolumeInPercent() / 100);
 				this.sounds.set(url, playedSound);
+				return playedSound;
 			}
 		} catch (e) {
 			console.error('Error while playing sound', e);
 		} finally {
 			this.playingSounds.delete(sound);
 		}
+		return;
 	}
 
 	private readonly obsoleteAudioCuesEnabled = observableFromEvent(
