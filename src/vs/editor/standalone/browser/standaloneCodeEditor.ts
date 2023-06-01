@@ -37,6 +37,7 @@ import { PLAINTEXT_LANGUAGE_ID } from 'vs/editor/common/languages/modesRegistry'
 import { ILanguageConfigurationService } from 'vs/editor/common/languages/languageConfigurationRegistry';
 import { IEditorConstructionOptions } from 'vs/editor/browser/config/editorConfiguration';
 import { ILanguageFeaturesService } from 'vs/editor/common/services/languageFeatures';
+import { DiffEditorWidget2 } from 'vs/editor/browser/widget/diffEditorWidget2/diffEditorWidget2';
 
 /**
  * Description of an action contribution
@@ -479,7 +480,7 @@ export class StandaloneEditor extends StandaloneCodeEditor implements IStandalon
 	}
 }
 
-export class StandaloneDiffEditor extends DiffEditorWidget implements IStandaloneDiffEditor {
+export class StandaloneDiffEditor extends DiffEditorWidget2 implements IStandaloneDiffEditor {
 
 	private readonly _configurationService: IConfigurationService;
 	private readonly _standaloneThemeService: IStandaloneThemeService;
@@ -507,7 +508,14 @@ export class StandaloneDiffEditor extends DiffEditorWidget implements IStandalon
 			themeService.setAutoDetectHighContrast(Boolean(options.autoDetectHighContrast));
 		}
 
-		super(domElement, options, {}, clipboardService, contextKeyService, instantiationService, codeEditorService, themeService, notificationService, contextMenuService, editorProgressService);
+		super(
+			domElement,
+			options,
+			{},
+			contextKeyService,
+			instantiationService,
+			codeEditorService,
+		);
 
 		this._configurationService = configurationService;
 		this._standaloneThemeService = themeService;

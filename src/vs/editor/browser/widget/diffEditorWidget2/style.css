@@ -59,3 +59,12 @@
 .merge-editor-conflict-actions > a:hover .codicon::before {
 	cursor: pointer;
 }
+
+
+.movedOriginal {
+	border: 2px solid yellow;
+}
+
+.movedModified {
+	border: 2px solid yellow;
+}

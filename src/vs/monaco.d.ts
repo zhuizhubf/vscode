@@ -2372,7 +2372,12 @@ declare namespace monaco.editor {
 		/**
 		 * Maps all modified line ranges in the original to the corresponding line ranges in the modified text model.
 		 */
-		readonly changes: LineRangeMapping[];
+		readonly changes: readonly LineRangeMapping[];
+		/**
+		 * Sorted by original line ranges.
+		 * The original line ranges and the modified line ranges must be disjoint (but can be touching).
+		 */
+		readonly moves: readonly MovedText[];
 	}
 
 	/**
@@ -2380,6 +2385,7 @@ declare namespace monaco.editor {
 	 */
 	export class LineRange {
 		static fromRange(range: Range): LineRange;
+		static subtract(a: LineRange, b: LineRange | undefined): LineRange[];
 		/**
 		 * @param lineRanges An array of sorted line ranges.
 		 */
@@ -2436,7 +2442,7 @@ declare namespace monaco.editor {
 	 * Maps a line range in the original text model to a line range in the modified text model.
 	 */
 	export class LineRangeMapping {
-		static inverse(mapping: LineRangeMapping[], originalLineCount: number, modifiedLineCount: number): LineRangeMapping[];
+		static inverse(mapping: readonly LineRangeMapping[], originalLineCount: number, modifiedLineCount: number): LineRangeMapping[];
 		/**
 		 * The line range in the original text model.
 		 */

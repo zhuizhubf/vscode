@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { assertFn } from 'vs/base/common/assert';
 import { RunOnceScheduler } from 'vs/base/common/async';
 import { Disposable } from 'vs/base/common/lifecycle';
 import { IObservable, IReader, ITransaction, derived, observableSignal, observableSignalFromEvent, observableValue, transaction } from 'vs/base/common/observable';
@@ -10,7 +11,7 @@ import { autorunWithStore2 } from 'vs/base/common/observableImpl/autorun';
 import { LineRange } from 'vs/editor/common/core/lineRange';
 import { Range } from 'vs/editor/common/core/range';
 import { IDocumentDiff, IDocumentDiffProvider } from 'vs/editor/common/diff/documentDiffProvider';
-import { LineRangeMapping, RangeMapping } from 'vs/editor/common/diff/linesDiffComputer';
+import { LineRangeMapping, MovedText, RangeMapping } from 'vs/editor/common/diff/linesDiffComputer';
 import { lineRangeMappingFromRangeMappings } from 'vs/editor/common/diff/standardLinesDiffComputer';
 import { IDiffEditorModel } from 'vs/editor/common/editorCommon';
 import { ITextModel } from 'vs/editor/common/model';
@@ -22,13 +23,16 @@ export class DiffModel extends Disposable {
 	private readonly _isDiffUpToDate = observableValue<boolean>('isDiffUpToDate', false);
 	public readonly isDiffUpToDate: IObservable<boolean> = this._isDiffUpToDate;
 
-	private readonly _diff = observableValue<IDocumentDiff | undefined>('diff', undefined);
-	public readonly diff: IObservable<IDocumentDiff | undefined> = this._diff;
+	private readonly _diff = observableValue<DiffState | undefined>('diff', undefined);
+	public readonly diff: IObservable<DiffState | undefined> = this._diff;
 
 	private readonly _unchangedRegions = observableValue<{ regions: UnchangedRegion[]; originalDecorationIds: string[]; modifiedDecorationIds: string[] }>('unchangedRegion', { regions: [], originalDecorationIds: [], modifiedDecorationIds: [] });
 	public readonly unchangedRegions: IObservable<UnchangedRegion[]> = derived('unchangedRegions', r =>
 		this.hideUnchangedRegions.read(r) ? this._unchangedRegions.read(r).regions : []
 	);
+
+	public readonly syncedMovedTexts = observableValue<MovedText | undefined>('syncedMovedText', undefined);
+
 
 	constructor(
 		model: IDiffEditorModel,
@@ -41,16 +45,17 @@ export class DiffModel extends Disposable {
 
 		const contentChangedSignal = observableSignal('contentChangedSignal');
 		const debouncer = this._register(new RunOnceScheduler(() => contentChangedSignal.trigger(undefined), 200));
+
 		this._register(model.modified.onDidChangeContent((e) => {
 			const diff = this._diff.get();
 			if (!diff) {
 				return;
 			}
-			const textEdits = TextEditInfo.fromModelContentChanges(e.changes);
+			/*const textEdits = TextEditInfo.fromModelContentChanges(e.changes);
 			this._diff.set(
 				applyModifiedEdits(diff, textEdits, model.original, model.modified),
 				undefined
-			);
+			);*/
 			debouncer.schedule();
 		}));
 		this._register(model.original.onDidChangeContent((e) => {
@@ -58,11 +63,11 @@ export class DiffModel extends Disposable {
 			if (!diff) {
 				return;
 			}
-			const textEdits = TextEditInfo.fromModelContentChanges(e.changes);
+			/*const textEdits = TextEditInfo.fromModelContentChanges(e.changes);
 			this._diff.set(
 				applyOriginalEdits(diff, textEdits, model.original, model.modified),
 				undefined
-			);
+			);*/
 			debouncer.schedule();
 		}));
 
@@ -135,7 +140,7 @@ export class DiffModel extends Disposable {
 			);
 
 			transaction(tx => {
-				this._diff.set(result, tx);
+				this._diff.set(DiffState.fromDiffResult(result), tx);
 				this._isDiffUpToDate.set(true, tx);
 
 				this._unchangedRegions.set(
@@ -171,8 +176,44 @@ export class DiffModel extends Disposable {
 	}
 }
 
+export class DiffState {
+	public static fromDiffResult(result: IDocumentDiff): DiffState {
+		return new DiffState(
+			result.changes.map(c => new DiffMapping(c, undefined, undefined)),
+			result.moves || []
+		);
+	}
+
+	constructor(
+		public readonly mappings: readonly DiffMapping[],
+		public readonly movedTexts: readonly MovedText[],
+	) { }
+}
+
+export class DiffMapping {
+	constructor(
+		readonly lineRangeMapping: LineRangeMapping,
+		readonly movedTo: MovedText | undefined,
+		readonly movedFrom: MovedText | undefined,
+	) {
+		if (movedTo) {
+			assertFn(() =>
+				movedTo.lineRangeMapping.modifiedRange.equals(lineRangeMapping.modifiedRange)
+				&& lineRangeMapping.originalRange.isEmpty
+				&& !movedFrom
+			);
+		} else if (movedFrom) {
+			assertFn(() =>
+				movedFrom.lineRangeMapping.originalRange.equals(lineRangeMapping.originalRange)
+				&& lineRangeMapping.modifiedRange.isEmpty
+				&& !movedTo
+			);
+		}
+	}
+}
+
 export class UnchangedRegion {
-	public static fromDiffs(changes: LineRangeMapping[], originalLineCount: number, modifiedLineCount: number): UnchangedRegion[] {
+	public static fromDiffs(changes: readonly LineRangeMapping[], originalLineCount: number, modifiedLineCount: number): UnchangedRegion[] {
 		const inversedMappings = LineRangeMapping.inverse(changes, originalLineCount, modifiedLineCount);
 		const result: UnchangedRegion[] = [];
 
@@ -301,6 +342,7 @@ function applyOriginalEdits(diff: IDocumentDiff, textEdits: TextEditInfo[], orig
 		identical: false,
 		quitEarly: false,
 		changes,
+		moves: [],
 	};
 }
 
@@ -340,5 +382,6 @@ function applyModifiedEdits(diff: IDocumentDiff, textEdits: TextEditInfo[], orig
 		identical: false,
 		quitEarly: false,
 		changes,
+		moves: [],
 	};
 }

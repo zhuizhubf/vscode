@@ -20,6 +20,12 @@ export class LinesDiff {
 		readonly changes: readonly LineRangeMapping[],
 
 		/**
+		 * Sorted by original line ranges.
+		 * The original line ranges and the modified line ranges must be disjoint (but can be touching).
+		 */
+		readonly moves: readonly MovedText[],
+
+		/**
 		 * Indicates if the time out was reached.
 		 * In that case, the diffs might be an approximation and the user should be asked to rerun the diff with more time.
 		 */
@@ -32,7 +38,7 @@ export class LinesDiff {
  * Maps a line range in the original text model to a line range in the modified text model.
  */
 export class LineRangeMapping {
-	public static inverse(mapping: LineRangeMapping[], originalLineCount: number, modifiedLineCount: number): LineRangeMapping[] {
+	public static inverse(mapping: readonly LineRangeMapping[], originalLineCount: number, modifiedLineCount: number): LineRangeMapping[] {
 		const result: LineRangeMapping[] = [];
 		let lastOriginalEndLineNumber = 1;
 		let lastModifiedEndLineNumber = 1;
@@ -123,4 +129,28 @@ export class RangeMapping {
 	public toString(): string {
 		return `{${this.originalRange.toString()}->${this.modifiedRange.toString()}}`;
 	}
+}
+
+export class SimpleLineRangeMapping {
+	constructor(
+		public readonly originalRange: LineRange,
+		public readonly modifiedRange: LineRange,
+	) {
+	}
+
+	public toString(): string {
+		return `{${this.originalRange.toString()}->${this.modifiedRange.toString()}}`;
+	}
+}
+
+export class MovedText {
+	constructor(
+		public readonly lineRangeMapping: SimpleLineRangeMapping,
+		/**
+		 * The diff from the original text to the moved text.
+		 * Must be contained in the original/modified line range.
+		 * Can be empty if the text didn't change (only moved).
+		 */
+		public readonly changes: readonly LineRangeMapping[],
+	) { }
 }
