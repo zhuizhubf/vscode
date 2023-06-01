@@ -82,7 +82,7 @@ export class BufferContentTracker {
 			const isWrapped = buffer.getLine(i + 1)?.isWrapped;
 			currentLine += line.translateToString(!isWrapped);
 			if (currentLine && !isWrapped || i === (buffer.baseY + this._xterm.raw.rows - 1)) {
-				const line = replaceWithNonBreakingSpaces(currentLine);
+				const line = currentLine.replace(new RegExp(' ', 'g'), '\xA0');
 				if (line.length) {
 					cachedLines.push(line);
 					currentLine = '';
@@ -122,7 +122,7 @@ export class BufferContentTracker {
 			const isWrapped = buffer.getLine(i + 1)?.isWrapped;
 			currentLine += line.translateToString(!isWrapped);
 			if (currentLine && !isWrapped || i === (buffer.baseY + this._xterm.raw.rows - 1)) {
-				const line = replaceWithNonBreakingSpaces(currentLine);
+				const line = currentLine.replace(new RegExp(' ', 'g'), '\xA0');
 				if (line.length) {
 					this._priorEditorViewportLineCount++;
 					this._lines.push(line);
@@ -132,8 +132,4 @@ export class BufferContentTracker {
 		}
 		this._logService.debug('Viewport content update complete, ', this._lines.length, ' lines in the viewport');
 	}
-}
-
-export function replaceWithNonBreakingSpaces(s: string): string {
-	return s.replace(new RegExp('  ', 'g'), ' \xA0');
 }
