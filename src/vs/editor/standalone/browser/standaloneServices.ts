@@ -1039,7 +1039,8 @@ class StandaloneContextMenuService extends ContextMenuService {
 
 class StandaloneAudioService implements IAudioCueService {
 	_serviceBrand: undefined;
-	async playAudioCue(cue: AudioCue, allowManyInParallel?: boolean | undefined): Promise<void> {
+	async playAudioCue(cue: AudioCue, allowManyInParallel?: boolean | undefined): Promise<HTMLAudioElement | undefined> {
+		return;
 	}
 
 	async playAudioCues(cues: AudioCue[]): Promise<void> {
@@ -1053,7 +1054,8 @@ class StandaloneAudioService implements IAudioCueService {
 		return Event.None;
 	}
 
-	async playSound(cue: Sound, allowManyInParallel?: boolean | undefined): Promise<void> {
+	async playSound(cue: Sound, allowManyInParallel?: boolean | undefined): Promise<HTMLAudioElement | undefined> {
+		return;
 	}
 }
 
