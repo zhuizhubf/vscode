@@ -390,7 +390,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 				this.instantiationService.invokeFunction(clearChatSession, this);
 				return;
 			}
-			await this.audioCueService.playAudioCue(AudioCue.chatRequestSent);
+			this.audioCueService.playAudioCue(AudioCue.chatRequestSent);
 			const input = query ?? editorValue;
 			const result = await this.chatService.sendRequest(this.viewModel.sessionId, input);
 			const cue = this.audioCueService.playAudioCueLoop(AudioCue.chatResponsePending);

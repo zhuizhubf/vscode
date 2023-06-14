@@ -31,6 +31,7 @@ import { CONTEXT_CHAT_INPUT_HAS_TEXT, CONTEXT_IN_CHAT_INPUT } from 'vs/workbench
 import { IChatReplyFollowup } from 'vs/workbench/contrib/chat/common/chatService';
 import { IChatWidgetHistoryService } from 'vs/workbench/contrib/chat/common/chatWidgetHistoryService';
 import { AccessibilityVerbositySettingId } from 'vs/workbench/contrib/accessibility/browser/accessibilityContribution';
+import { IAccessibilityService } from 'vs/platform/accessibility/common/accessibility';
 
 const $ = dom.$;
 
@@ -59,6 +60,10 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 	private followupsDisposables = this._register(new DisposableStore());
 
 	private _inputEditor!: CodeEditorWidget;
+	private _scopedInstantiationService!: IInstantiationService;
+	private _inputContainer: any;
+	widget!: IChatWidget;
+	private _inputEditorElement: any;
 	public get inputEditor() {
 		return this._inputEditor;
 	}
@@ -78,7 +83,8 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IContextKeyService private readonly contextKeyService: IContextKeyService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@IKeybindingService private readonly keybindingService: IKeybindingService
+		@IKeybindingService private readonly keybindingService: IKeybindingService,
+		@IAccessibilityService private readonly accessibilityService: IAccessibilityService
 	) {
 		super();
 
@@ -148,26 +154,35 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			this.history.add(editorValue);
 		}
 
-		this._inputEditor.focus();
 		this._inputEditor.setValue('');
+		if (this.accessibilityService.isScreenReaderOptimized()) {
+			this._inputEditor.dispose();
+			this.render(this.container, '', this.widget);
+		}
+		this._inputEditor.focus();
 	}
 
 	render(container: HTMLElement, initialValue: string, widget: IChatWidget) {
-		this.container = dom.append(container, $('.interactive-input-part'));
-		this.followupsContainer = dom.append(this.container, $('.interactive-input-followups'));
+		if (!this.container) {
+			this.widget = widget;
+			this.container = dom.append(container, $('.interactive-input-part'));
+			this.followupsContainer = dom.append(this.container, $('.interactive-input-followups'));
 
-		const inputContainer = dom.append(this.container, $('.interactive-input-and-toolbar'));
+			this._inputContainer = dom.append(this.container, $('.interactive-input-and-toolbar'));
 
-		const inputScopedContextKeyService = this._register(this.contextKeyService.createScoped(inputContainer));
-		CONTEXT_IN_CHAT_INPUT.bindTo(inputScopedContextKeyService).set(true);
-		const scopedInstantiationService = this.instantiationService.createChild(new ServiceCollection([IContextKeyService, inputScopedContextKeyService]));
 
-		const { historyNavigationBackwardsEnablement, historyNavigationForwardsEnablement } = this._register(registerAndCreateHistoryNavigationContext(inputScopedContextKeyService, this));
-		this.setHistoryNavigationEnablement = enabled => {
-			historyNavigationBackwardsEnablement.set(enabled);
-			historyNavigationForwardsEnablement.set(enabled);
-		};
+			const inputScopedContextKeyService = this._register(this.contextKeyService.createScoped(this._inputContainer));
+			CONTEXT_IN_CHAT_INPUT.bindTo(inputScopedContextKeyService).set(true);
+			this._scopedInstantiationService = this.instantiationService.createChild(new ServiceCollection([IContextKeyService, inputScopedContextKeyService]));
 
+			const { historyNavigationBackwardsEnablement, historyNavigationForwardsEnablement } = this._register(registerAndCreateHistoryNavigationContext(inputScopedContextKeyService, this));
+			this.setHistoryNavigationEnablement = enabled => {
+				historyNavigationBackwardsEnablement.set(enabled);
+				historyNavigationForwardsEnablement.set(enabled);
+			};
+			this._inputEditorElement = dom.append(this._inputContainer, $('.interactive-input-editor'));
+
+		}
 		const options = getSimpleEditorOptions();
 		options.readOnly = false;
 		options.ariaLabel = this._getAriaLabel();
@@ -181,9 +196,9 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		options.suggest = { showIcons: false };
 		options.scrollbar = { ...(options.scrollbar ?? {}), vertical: 'hidden' };
 
-		const inputEditorElement = dom.append(inputContainer, $('.interactive-input-editor'));
-		this._inputEditor = this._register(scopedInstantiationService.createInstance(CodeEditorWidget, inputEditorElement, options, getSimpleCodeEditorWidgetOptions()));
+		this._inputEditor = this._register(this._scopedInstantiationService.createInstance(CodeEditorWidget, this._inputEditorElement, options, getSimpleCodeEditorWidgetOptions()));
 
+		this._register(this._inputEditor.onDidDispose(() => this._inputEditorElement.removeChild(this._inputEditor.getDomNode()!)));
 		this._register(this._inputEditor.onDidChangeModelContent(() => {
 			const currentHeight = Math.min(this._inputEditor.getContentHeight(), INPUT_EDITOR_MAX_HEIGHT);
 			if (currentHeight !== this.inputEditorHeight) {
@@ -200,15 +215,15 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		}));
 		this._register(this._inputEditor.onDidFocusEditorText(() => {
 			this._onDidFocus.fire();
-			inputContainer.classList.toggle('focused', true);
+			this._inputContainer.classList.toggle('focused', true);
 		}));
 		this._register(this._inputEditor.onDidBlurEditorText(() => {
-			inputContainer.classList.toggle('focused', false);
+			this._inputContainer.classList.toggle('focused', false);
 
 			this._onDidBlur.fire();
 		}));
 
-		const toolbar = this._register(this.instantiationService.createInstance(MenuWorkbenchToolBar, inputContainer, MenuId.ChatExecute, {
+		const toolbar = this._register(this.instantiationService.createInstance(MenuWorkbenchToolBar, this._inputContainer, MenuId.ChatExecute, {
 			menuOptions: {
 				shouldForwardArgs: true
 			}
