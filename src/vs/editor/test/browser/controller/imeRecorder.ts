@@ -8,6 +8,7 @@ import { DisposableStore, toDisposable } from 'vs/base/common/lifecycle';
 import { IRecorded, IRecordedCompositionEvent, IRecordedEvent, IRecordedInputEvent, IRecordedKeyboardEvent, IRecordedTextareaState } from 'vs/editor/test/browser/controller/imeRecordedTypes';
 import * as browser from 'vs/base/browser/browser';
 import * as platform from 'vs/base/common/platform';
+import { FastDomNode } from 'vs/base/browser/fastDomNode';
 
 (() => {
 
@@ -97,7 +98,7 @@ import * as platform from 'vs/base/common/platform';
 		}));
 		const wrapper = disposables.add(new TextAreaWrapper(inputarea));
 
-		wrapper.setValue('', `aaaa`);
+		wrapper.setValue('', `aaaa`, () => new FastDomNode(document.createElement('textarea')));
 		wrapper.setSelectionRange('', 2, 2);
 
 		const recordEvent = (e: IRecordedEvent) => {

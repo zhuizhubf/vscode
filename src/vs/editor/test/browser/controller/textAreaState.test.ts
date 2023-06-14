@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
+import { FastDomNode } from 'vs/base/browser/fastDomNode';
 import { Disposable } from 'vs/base/common/lifecycle';
 import { ITextAreaWrapper, PagedScreenReaderStrategy, TextAreaState } from 'vs/editor/browser/controller/textAreaState';
 import { Range } from 'vs/editor/common/core/range';
@@ -100,21 +101,21 @@ suite('TextAreaState', () => {
 		textArea._selectionEnd = 12;
 
 		let state = new TextAreaState('Hi world!', 2, 2, null, undefined);
-		state.writeToTextArea('test', textArea, false);
+		state.writeToTextArea('test', textArea, false, () => new FastDomNode(document.createElement('textarea')));
 
 		assert.strictEqual(textArea._value, 'Hi world!');
 		assert.strictEqual(textArea._selectionStart, 9);
 		assert.strictEqual(textArea._selectionEnd, 9);
 
 		state = new TextAreaState('Hi world!', 3, 3, null, undefined);
-		state.writeToTextArea('test', textArea, false);
+		state.writeToTextArea('test', textArea, false, () => new FastDomNode(document.createElement('textarea')));
 
 		assert.strictEqual(textArea._value, 'Hi world!');
 		assert.strictEqual(textArea._selectionStart, 9);
 		assert.strictEqual(textArea._selectionEnd, 9);
 
 		state = new TextAreaState('Hi world!', 0, 2, null, undefined);
-		state.writeToTextArea('test', textArea, true);
+		state.writeToTextArea('test', textArea, true, () => new FastDomNode(document.createElement('textarea')));
 
 		assert.strictEqual(textArea._value, 'Hi world!');
 		assert.strictEqual(textArea._selectionStart, 0);

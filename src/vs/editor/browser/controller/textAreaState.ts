@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { FastDomNode } from 'vs/base/browser/fastDomNode';
 import * as strings from 'vs/base/common/strings';
 import { Position } from 'vs/editor/common/core/position';
 import { Range } from 'vs/editor/common/core/range';
@@ -12,7 +13,7 @@ export const _debugComposition = false;
 
 export interface ITextAreaWrapper {
 	getValue(): string;
-	setValue(reason: string, value: string): void;
+	setValue(reason: string, value: string, _requestNewTextArea: () => FastDomNode<HTMLTextAreaElement>): void;
 
 	getSelectionStart(): number;
 	getSelectionEnd(): number;
@@ -76,11 +77,11 @@ export class TextAreaState {
 		return new TextAreaState(this.value, this.value.length, this.value.length, null, undefined);
 	}
 
-	public writeToTextArea(reason: string, textArea: ITextAreaWrapper, select: boolean): void {
+	public writeToTextArea(reason: string, textArea: ITextAreaWrapper, select: boolean, _requestNewTextArea: () => FastDomNode<HTMLTextAreaElement>): void {
 		if (_debugComposition) {
 			console.log(`writeToTextArea ${reason}: ${this.toString()}`);
 		}
-		textArea.setValue(reason, this.value);
+		textArea.setValue(reason, this.value, _requestNewTextArea);
 		if (select) {
 			textArea.setSelectionRange(reason, this.selectionStart, this.selectionEnd);
 		}

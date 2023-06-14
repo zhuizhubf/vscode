@@ -11,6 +11,7 @@ import { EndOfLinePreference } from 'vs/editor/common/model';
 import * as dom from 'vs/base/browser/dom';
 import * as browser from 'vs/base/browser/browser';
 import * as platform from 'vs/base/common/platform';
+import { FastDomNode } from 'vs/base/browser/fastDomNode';
 
 // To run this test, open imeTester.html
 
@@ -126,7 +127,7 @@ function doCreateTest(description: string, inputStr: string, expectedStr: string
 		isFirefox: browser.isFirefox,
 		isChrome: browser.isChrome,
 		isSafari: browser.isSafari,
-	});
+	}, () => new FastDomNode(document.createElement('textarea')));
 
 	const output = document.createElement('pre');
 	output.className = 'output';

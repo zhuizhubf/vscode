@@ -6,6 +6,7 @@
 import * as browser from 'vs/base/browser/browser';
 import * as dom from 'vs/base/browser/dom';
 import { DomEmitter } from 'vs/base/browser/event';
+import { FastDomNode } from 'vs/base/browser/fastDomNode';
 import { IKeyboardEvent, StandardKeyboardEvent } from 'vs/base/browser/keyboardEvent';
 import { inputLatency } from 'vs/base/browser/performance';
 import { RunOnceScheduler } from 'vs/base/common/async';
@@ -206,9 +207,10 @@ export class TextAreaInput extends Disposable {
 
 	constructor(
 		private readonly _host: ITextAreaInputHost,
-		private readonly _textArea: ICompleteTextAreaWrapper,
+		private _textArea: ICompleteTextAreaWrapper,
 		private readonly _OS: OperatingSystem,
-		private readonly _browser: IBrowser
+		private readonly _browser: IBrowser,
+		private readonly _requestNewTextArea: () => FastDomNode<HTMLTextAreaElement>
 	) {
 		super();
 		this._asyncTriggerCut = this._register(new RunOnceScheduler(() => this._onCut.fire(), 0));
@@ -615,7 +617,8 @@ export class TextAreaInput extends Disposable {
 			textAreaState = textAreaState.collapseSelection();
 		}
 
-		textAreaState.writeToTextArea(reason, this._textArea, this._hasFocus);
+
+		textAreaState.writeToTextArea(reason, this._textArea, this._hasFocus, this._requestNewTextArea);
 		this._textAreaState = textAreaState;
 	}
 
@@ -707,7 +710,7 @@ export class TextAreaWrapper extends Disposable implements ICompleteTextAreaWrap
 	private _ignoreSelectionChangeTime: number;
 
 	constructor(
-		private readonly _actual: HTMLTextAreaElement
+		private _actual: HTMLTextAreaElement
 	) {
 		super();
 		this._ignoreSelectionChangeTime = 0;
@@ -748,10 +751,16 @@ export class TextAreaWrapper extends Disposable implements ICompleteTextAreaWrap
 		return this._actual.value;
 	}
 
-	public setValue(reason: string, value: string): void {
-		const textArea = this._actual;
-		if (textArea.value === value) {
+	public setValue(reason: string, value: string, _requestNewTextArea: () => FastDomNode<HTMLTextAreaElement>): void {
+		let textArea = this._actual;
+		if (textArea.value === value && reason !== 'focusgain') {
 			// No change
+			return;
+		}
+		if (value === '') {
+			textArea = _requestNewTextArea().domNode;
+			this._actual = textArea;
+			textArea.focus();
 			return;
 		}
 		// console.log('reason: ' + reason + ', current value: ' + textArea.value + ' => new value: ' + value);

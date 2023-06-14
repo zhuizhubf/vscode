@@ -302,6 +302,26 @@ export class TextAreaHandler extends ViewPart {
 			isChrome: browser.isChrome,
 			isFirefox: browser.isFirefox,
 			isSafari: browser.isSafari,
+		}, () => {
+			this.textArea.domNode.remove();
+			const textArea = createFastDomNode(document.createElement('textarea'));
+			PartFingerprints.write(this.textArea, PartFingerprint.TextArea);
+			this.textArea.setClassName(`inputarea ${MOUSE_CURSOR_TEXT_CSS_CLASS_NAME}`);
+			this.textArea.setAttribute('wrap', this._textAreaWrapping && !this._visibleTextArea ? 'on' : 'off');
+			const { tabSize } = this._context.viewModel.model.getOptions();
+			this.textArea.domNode.style.tabSize = `${tabSize * this._fontInfo.spaceWidth}px`;
+			this.textArea.setAttribute('autocorrect', 'off');
+			this.textArea.setAttribute('autocapitalize', 'off');
+			this.textArea.setAttribute('autocomplete', 'off');
+			this.textArea.setAttribute('spellcheck', 'false');
+			this.textArea.setAttribute('aria-label', this._getAriaLabel(options));
+			this.textArea.setAttribute('tabindex', String(options.get(EditorOption.tabIndex)));
+			this.textArea.setAttribute('role', 'textbox');
+			this.textArea.setAttribute('aria-roledescription', nls.localize('editor', "editor"));
+			this.textArea.setAttribute('aria-multiline', 'true');
+			this.textArea.setAttribute('aria-haspopup', 'false');
+			this.textArea.setAttribute('aria-autocomplete', 'both');
+			return textArea;
 		}));
 
 		this._register(this._textAreaInput.onKeyDown((e: IKeyboardEvent) => {
