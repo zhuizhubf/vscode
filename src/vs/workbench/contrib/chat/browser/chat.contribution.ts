@@ -39,8 +39,7 @@ import { registerMoveActions } from 'vs/workbench/contrib/chat/browser/actions/c
 import { registerClearActions } from 'vs/workbench/contrib/chat/browser/actions/chatClearActions';
 import { AccessibilityViewAction } from 'vs/workbench/contrib/accessibility/browser/accessibilityContribution';
 import { AccessibleViewType, IAccessibleViewService } from 'vs/workbench/contrib/accessibility/browser/accessibleView';
-import { ICodeEditorService } from 'vs/editor/browser/services/codeEditorService';
-import { IChatResponseViewModel, isResponseVM } from 'vs/workbench/contrib/chat/common/chatViewModel';
+import { isResponseVM } from 'vs/workbench/contrib/chat/common/chatViewModel';
 import { CONTEXT_IN_CHAT_SESSION } from 'vs/workbench/contrib/chat/common/chatContextKeys';
 
 // Register configuration
@@ -124,26 +123,17 @@ class ChatAccessibleViewContribution extends Disposable {
 		super();
 		this._register(AccessibilityViewAction.addImplementation(100, 'panelChat', accessor => {
 			const accessibleViewService = accessor.get(IAccessibleViewService);
-			const codeEditorService = accessor.get(ICodeEditorService);
-			const editor = codeEditorService.getActiveCodeEditor() || codeEditorService.getFocusedCodeEditor();
 			const widgetService = accessor.get(IChatWidgetService);
-			const editorUri = editor?.getModel()?.uri;
 			const widget: IChatWidget | undefined = widgetService.lastFocusedWidget;
 			const focusedItem: ChatTreeItem | undefined = widget?.getFocus();
 			if (!widget || !focusedItem) {
 				return false;
 			}
-			const codeBlockInfo = editorUri ? widget!.getCodeBlockInfoForEditor(editorUri) : undefined;
-			let responseItem: ChatTreeItem | undefined;
-			if (codeBlockInfo) {
-				responseItem = codeBlockInfo.element;
-			} else {
-				responseItem = widget!.viewModel?.getItems().reverse().find((item): item is IChatResponseViewModel => isResponseVM(item));
-			}
-			if (!isResponseVM(responseItem)) {
+
+			if (!isResponseVM(focusedItem)) {
 				return false;
 			}
-			const responseContent = responseItem?.response.value;
+			const responseContent = focusedItem?.response.value;
 			if (!responseContent) {
 				return false;
 			}
@@ -154,7 +144,7 @@ class ChatAccessibleViewContribution extends Disposable {
 					widget.focus(focusedItem);
 					provider.dispose();
 				},
-				options: { ariaLabel: nls.localize('chatAccessibleView', "Chat Accessible View"), language: 'typescript', type: AccessibleViewType.View }
+				options: { ariaLabel: nls.localize('chatAccessibleView', "Chat Accessible View"), language: 'markdown', type: AccessibleViewType.View }
 			});
 			accessibleViewService.show('panelChat');
 			return true;
