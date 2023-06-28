@@ -98,7 +98,6 @@ class AccessibleView extends Disposable {
 				return this._render(provider, container);
 			},
 			onHide: () => {
-				provider.onClose();
 				this._keyListener?.dispose();
 			}
 		};
@@ -127,6 +126,7 @@ class AccessibleView extends Disposable {
 			container.appendChild(this._editorContainer);
 			this._keyListener = this._register(this._editorWidget.onKeyUp((e) => {
 				if (e.keyCode === KeyCode.Escape) {
+					provider.onClose();
 					this._contextViewService.hideContextView();
 				} else if (e.keyCode === KeyCode.KeyD && this._configurationService.getValue(settingKey)) {
 					this._configurationService.updateValue(settingKey, false);
