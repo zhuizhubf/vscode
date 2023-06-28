@@ -138,13 +138,11 @@ class AccessibleView extends Disposable {
 					const url: string = provider.options.readMoreUrl!;
 					alert(AccessibilityHelpNLS.openingDocs);
 					this._openerService.open(URI.parse(url));
-					e.preventDefault();
 				} else if (e.equals(KeyMod.CtrlCmd | KeyCode.KeyE)) {
 					this._commandService.executeCommand('editor.action.toggleScreenReaderAccessibilityMode');
-					e.preventDefault();
 				}
-				e.stopPropagation();
 				provider.onKeyDown?.(e);
+				e.stopPropagation();
 			}));
 			this._register(this._editorWidget.onDidBlurEditorText(() => this._contextViewService.hideContextView()));
 			this._register(this._editorWidget.onDidContentSizeChange(() => this._layout()));
