@@ -143,7 +143,7 @@ class AccessibleView extends Disposable {
 			this._editorWidget.updateOptions({ ariaLabel: provider.options.ariaLabel });
 			this._editorWidget.focus();
 		});
-		return toDisposable(() => provider.onClose());
+		return toDisposable(() => { });
 	}
 
 	private _layout(): void {
