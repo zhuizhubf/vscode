@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IKeyboardEvent } from 'vs/base/browser/keyboardEvent';
-import { KeyCode } from 'vs/base/common/keyCodes';
+import { KeyCode, KeyMod } from 'vs/base/common/keyCodes';
 import { Disposable, toDisposable } from 'vs/base/common/lifecycle';
+import { isMacintosh } from 'vs/base/common/platform';
 import { URI } from 'vs/base/common/uri';
 import { IEditorConstructionOptions } from 'vs/editor/browser/config/editorConfiguration';
 import { EditorExtensionsRegistry } from 'vs/editor/browser/editorExtensions';
@@ -15,6 +16,7 @@ import { IModelService } from 'vs/editor/common/services/model';
 import { AccessibilityHelpNLS } from 'vs/editor/common/standaloneStrings';
 import { LinkDetector } from 'vs/editor/contrib/links/browser/links';
 import { localize } from 'vs/nls';
+import { ICommandService } from 'vs/platform/commands/common/commands';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
 import { IContextViewDelegate, IContextViewService } from 'vs/platform/contextview/browser/contextView';
 import { IInstantiationService, createDecorator } from 'vs/platform/instantiation/common/instantiation';
@@ -67,7 +69,8 @@ class AccessibleView extends Disposable {
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
 		@IConfigurationService private readonly _configurationService: IConfigurationService,
 		@IModelService private readonly _modelService: IModelService,
-		@IContextViewService private readonly _contextViewService: IContextViewService
+		@IContextViewService private readonly _contextViewService: IContextViewService,
+		@ICommandService private readonly _commandService: ICommandService
 	) {
 		super();
 		this._editorContainer = document.createElement('div');
@@ -108,8 +111,8 @@ class AccessibleView extends Disposable {
 	private _render(provider: IAccessibleContentProvider, container: HTMLElement): IDisposable {
 		const settingKey = `accessibility.verbosity.${provider.id}`;
 		const value = this._configurationService.getValue(settingKey);
-		const readMoreLink = provider.options.readMoreUrl ? localize("openDoc", "\nPress H now to open a browser window with more information related to accessibility.\n") : '';
-		const disableHelpHint = provider.options.type === AccessibleViewType.HelpMenu && !!value ? localize('disable-help-hint', '\nTo disable the `accessibility.verbosity` hint for this feature, press D now.\n') : '\n';
+		const readMoreLink = provider.options.readMoreUrl ? localize("openDoc", "\nPress Ctrl+H now to open a browser window with more information related to accessibility.\n") : '';
+		const disableHelpHint = provider.options.type === AccessibleViewType.HelpMenu && !!value ? localize('disable-help-hint', '\nTo disable the `accessibility.verbosity` hint for this feature, press {0} now.\n', isMacintosh ? 'Cmd+D' : 'Ctrl+D') : '\n';
 		const fragment = provider.provideContent() + readMoreLink + disableHelpHint + localize('exit-tip', 'Exit this menu via the Escape key.');
 
 		this._getTextModel(URI.from({ path: `accessible-view-${provider.id}`, scheme: 'accessible-view', fragment })).then((model) => {
@@ -125,15 +128,20 @@ class AccessibleView extends Disposable {
 				model.setLanguage(provider.options.language);
 			}
 			container.appendChild(this._editorContainer);
-			this._keyListener = this._register(this._editorWidget.onKeyUp((e) => {
+			this._keyListener = this._register(this._editorWidget.onKeyDown((e) => {
 				if (e.keyCode === KeyCode.Escape) {
 					this._contextViewService.hideContextView();
-				} else if (e.keyCode === KeyCode.KeyD && this._configurationService.getValue(settingKey)) {
+				} else if (e.equals(KeyMod.CtrlCmd | KeyCode.KeyD) && this._configurationService.getValue(settingKey)) {
 					this._configurationService.updateValue(settingKey, false);
-				} else if (e.keyCode === KeyCode.KeyH && provider.options.readMoreUrl) {
+				} else if (e.equals(KeyMod.WinCtrl | KeyCode.KeyH) && provider.options.readMoreUrl) {
+					// Cmd+H hides the window on macOS, so use winCtrl instead
 					const url: string = provider.options.readMoreUrl!;
 					alert(AccessibilityHelpNLS.openingDocs);
 					this._openerService.open(URI.parse(url));
+					e.preventDefault();
+				} else if (e.equals(KeyMod.CtrlCmd | KeyCode.KeyE)) {
+					this._commandService.executeCommand('editor.action.toggleScreenReaderAccessibilityMode');
+					e.preventDefault();
 				}
 				e.stopPropagation();
 				provider.onKeyDown?.(e);
