@@ -1277,6 +1277,8 @@ async function webviewPreloads(ctx: PreloadContext) {
 		});
 	};
 
+	let count = 0;
+
 	window.addEventListener('message', async rawEvent => {
 		const event = rawEvent as ({ data: webviewMessages.ToWebviewMessage });
 
@@ -1369,10 +1371,18 @@ async function webviewPreloads(ctx: PreloadContext) {
 			}
 			case 'showOutput': {
 				const { outputId, cellTop, cellId, content } = event.data;
-				outputRunner.enqueue(outputId, () => {
-					viewModel.showOutput(cellId, outputId, cellTop);
-					if (content) {
-						viewModel.updateAndRerender(cellId, outputId, content);
+
+				const iter = count;
+				count = count + 1;
+				console.log(`enqueueing show output ${iter}`);
+				//outputRunner.cancelOutput(outputId);
+				outputRunner.enqueue(outputId, (abort) => {
+					if (!abort.aborted) {
+						viewModel.showOutput(cellId, outputId, cellTop);
+						if (content) {
+							console.log(`executing show output ${iter}`);
+							viewModel.updateAndRerender(cellId, outputId, content, abort);
+						}
 					}
 				});
 				break;
@@ -1506,7 +1516,7 @@ async function webviewPreloads(ctx: PreloadContext) {
 			try {
 				const renderStart = performance.now();
 				await this._api.renderOutputItem(item, element, signal);
-				this.postDebugMessage('Rendered output item', { id: item.id, duration: `${performance.now() - renderStart}ms` });
+				console.log('Rendered output item', { id: item.id, duration: `${performance.now() - renderStart}ms` });
 
 			} catch (e) {
 				if (signal.aborted) {
@@ -1664,6 +1674,16 @@ async function webviewPreloads(ctx: PreloadContext) {
 	const outputRunner = new class {
 		private readonly outputs = new Map<string, { abort: AbortController; queue: Promise<unknown> }>();
 
+		private nextAction: (() => void) | undefined;
+
+		private doNext(outputId: string) {
+			this.outputs.delete(outputId);
+			if (this.nextAction) {
+				this.nextAction();
+			}
+			this.nextAction = undefined;
+		}
+
 		/**
 		 * Pushes the action onto the list of actions for the given output ID,
 		 * ensuring that it's run in-order.
@@ -1675,13 +1695,17 @@ async function webviewPreloads(ctx: PreloadContext) {
 			const record = this.outputs.get(outputId);
 			if (!record) {
 				const controller = new AbortController();
-				this.outputs.set(outputId, { abort: controller, queue: new Promise(r => r(action(controller.signal))) });
-			} else {
-				record.queue = record.queue.then(async r => {
-					if (!record.abort.signal.aborted) {
-						await action(record.abort.signal);
-					}
+				const promise = new Promise(resolve =>
+					setTimeout(() => {
+						resolve(action(controller.signal));
+					}, 0))
+					.then(r => this.doNext(outputId));
+				this.outputs.set(outputId, {
+					abort: controller, queue: promise
 				});
+			} else {
+				console.log('enqueing');
+				this.nextAction = () => action(record.abort.signal);
 			}
 		}
 
@@ -2027,9 +2051,9 @@ async function webviewPreloads(ctx: PreloadContext) {
 			cell?.show(outputId, top);
 		}
 
-		public updateAndRerender(cellId: string, outputId: string, content: webviewMessages.ICreationContent) {
+		public updateAndRerender(cellId: string, outputId: string, content: webviewMessages.ICreationContent, abort: AbortSignal) {
 			const cell = this._outputCells.get(cellId);
-			cell?.updateContentAndRerender(outputId, content);
+			cell?.updateContentAndRerender(outputId, content, abort);
 		}
 
 		public hideOutput(cellId: string) {
@@ -2391,8 +2415,8 @@ async function webviewPreloads(ctx: PreloadContext) {
 			this.element.style.visibility = 'hidden';
 		}
 
-		public updateContentAndRerender(outputId: string, content: webviewMessages.ICreationContent) {
-			this.outputElements.get(outputId)?.updateContentAndRender(content);
+		public updateContentAndRerender(outputId: string, content: webviewMessages.ICreationContent, abort: AbortSignal) {
+			this.outputElements.get(outputId)?.updateContentAndRender(content, abort);
 		}
 
 		public updateOutputHeight(outputId: string, height: number) {
@@ -2469,8 +2493,8 @@ async function webviewPreloads(ctx: PreloadContext) {
 			return this._outputNode;
 		}
 
-		public updateContentAndRender(content: webviewMessages.ICreationContent) {
-			this._outputNode?.updateAndRerender(content);
+		public updateContentAndRender(content: webviewMessages.ICreationContent, abort: AbortSignal) {
+			this._outputNode?.updateAndRerender(content, abort);
 		}
 	}
 
@@ -2592,9 +2616,9 @@ async function webviewPreloads(ctx: PreloadContext) {
 			}
 		}
 
-		public updateAndRerender(content: webviewMessages.ICreationContent) {
+		public updateAndRerender(content: webviewMessages.ICreationContent, abort: AbortSignal) {
 			if (this._content) {
-				this.render(content, this._content.preferredRendererId, this._content.preloadErrors);
+				this.render(content, this._content.preferredRendererId, this._content.preloadErrors, abort);
 			}
 		}
 	}

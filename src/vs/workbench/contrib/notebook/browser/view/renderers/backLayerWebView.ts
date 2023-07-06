@@ -603,7 +603,6 @@ export class BackLayerWebView<T extends ICommonCellInfo> extends Themable {
 
 									// clear the pending mapping
 									this.pendingWebviewIdleCreationRequest.delete(outputRequest);
-									this.pendingWebviewIdleCreationRequest.delete(outputRequest);
 
 									const cellInfo = inset.cellInfo;
 									this.reversedInsetMapping.set(update.id, outputRequest);
@@ -616,20 +615,19 @@ export class BackLayerWebView<T extends ICommonCellInfo> extends Themable {
 								this.reversedPendingWebviewIdleInsetMapping.delete(update.id);
 							}
 
-							{
-								if (!update.init) {
-									continue;
-								}
-
-								const output = this.reversedInsetMapping.get(update.id);
-
-								if (!output) {
-									continue;
-								}
-
-								const inset = this.insetMapping.get(output)!;
-								inset.initialized = true;
+							if (!update.init) {
+								continue;
 							}
+
+							const output = this.reversedInsetMapping.get(update.id);
+
+							if (!output) {
+								continue;
+							}
+
+							const inset = this.insetMapping.get(output)!;
+							inset.initialized = true;
+
 						} else {
 							this.notebookEditor.updateMarkupCellHeight(update.id, height, !!update.init);
 						}
