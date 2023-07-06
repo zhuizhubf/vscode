@@ -2202,6 +2202,9 @@ export abstract class AbstractTaskService extends Disposable implements ITaskSer
 		await this._waitForSupportedExecutions;
 		await this._whenTaskSystemReady;
 		if (this._workspaceTasksPromise) {
+			console.log('returning');
+			const tasks = await this._workspaceTasksPromise;
+			console.log([...tasks.entries()].map(t => `${t[0]} ${t[1].workspaceFolder} ${t[1].set?.tasks.map(t => t._label)}`));
 			return this._workspaceTasksPromise;
 		}
 		return this._updateWorkspaceTasks(runSource);
