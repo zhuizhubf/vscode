@@ -83,7 +83,7 @@ class EditorAccessibilityHelpContribution extends Disposable {
 			const accessibleViewService = accessor.get(IAccessibleViewService);
 			const instantiationService = accessor.get(IInstantiationService);
 			const commandService = accessor.get(ICommandService);
-			let codeEditor = codeEditorService.getActiveCodeEditor() || codeEditorService.getFocusedCodeEditor();
+			let codeEditor = codeEditorService.getFocusedCodeEditor();
 			if (!codeEditor) {
 				await commandService.executeCommand(NEW_UNTITLED_FILE_COMMAND_ID);
 				codeEditor = codeEditorService.getActiveCodeEditor()!;
@@ -105,7 +105,7 @@ class HoverAccessibleViewContribution extends Disposable {
 		this._register(AccessibleViewAction.addImplementation(90, 'hover', accessor => {
 			const accessibleViewService = accessor.get(IAccessibleViewService);
 			const codeEditorService = accessor.get(ICodeEditorService);
-			const editor = codeEditorService.getActiveCodeEditor() || codeEditorService.getFocusedCodeEditor();
+			const editor = codeEditorService.getFocusedCodeEditor();
 			if (!editor) {
 				return false;
 			}
