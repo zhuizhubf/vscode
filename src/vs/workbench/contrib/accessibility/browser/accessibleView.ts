@@ -59,9 +59,11 @@ export interface IAccessibleViewOptions {
 }
 
 export const accessibilityHelpIsShown = new RawContextKey<boolean>('accessibilityHelpIsShown', false, true);
+export const accessibleViewIsShown = new RawContextKey<boolean>('accessibleViewIsShown', false, true);
 class AccessibleView extends Disposable {
 	private _editorWidget: CodeEditorWidget;
 	private _accessiblityHelpIsShown: IContextKey<boolean>;
+	private _accessibleViewIsShown: IContextKey<boolean>;
 	get editorWidget() { return this._editorWidget; }
 	private _editorContainer: HTMLElement;
 	private _currentProvider: IAccessibleContentProvider | undefined;
@@ -77,6 +79,7 @@ class AccessibleView extends Disposable {
 	) {
 		super();
 		this._accessiblityHelpIsShown = accessibilityHelpIsShown.bindTo(this._contextKeyService);
+		this._accessibleViewIsShown = accessibleViewIsShown.bindTo(this._contextKeyService);
 		this._editorContainer = document.createElement('div');
 		this._editorContainer.classList.add('accessible-view');
 		const codeEditorWidgetOptions: ICodeEditorWidgetOptions = {
@@ -119,6 +122,8 @@ class AccessibleView extends Disposable {
 			onHide: () => {
 				if (provider.options.type === AccessibleViewType.HelpMenu) {
 					this._accessiblityHelpIsShown.reset();
+				} else {
+					this._accessibleViewIsShown.reset();
 				}
 				this._currentProvider = undefined;
 			}
@@ -126,6 +131,8 @@ class AccessibleView extends Disposable {
 		this._contextViewService.showContextView(delegate);
 		if (provider.options.type === AccessibleViewType.HelpMenu) {
 			this._accessiblityHelpIsShown.set(true);
+		} else {
+			this._accessibleViewIsShown.set(true);
 		}
 	}
 
@@ -153,7 +160,6 @@ class AccessibleView extends Disposable {
 		}
 
 		const fragment = message + provider.provideContent() + readMoreLink + disableHelpHint + localize('exit-tip', 'Exit this menu via the Escape key.');
-
 		this._getTextModel(URI.from({ path: `accessible-view-${provider.verbositySettingKey}`, scheme: 'accessible-view', fragment })).then((model) => {
 			if (!model) {
 				return;
