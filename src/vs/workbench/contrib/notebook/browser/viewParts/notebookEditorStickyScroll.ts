@@ -271,7 +271,7 @@ export class NotebookStickyScroll extends Disposable {
 			value.dispose();
 		});
 
-		const editorScrollTop = this.notebookEditor.scrollTop;
+		const editorScrollTop = this.notebookEditor.scrollTop - 10;
 
 		// find last code cell of section, store bottom scroll position in sectionBottom
 		const visibleRange = this.notebookEditor.visibleRanges[0];
@@ -285,7 +285,7 @@ export class NotebookStickyScroll extends Disposable {
 		let sectionBottom = 0;
 		for (let i = visibleRange.start; i < visibleRange.end; i++) {
 			// if (i === 0 &&
-			if (editorScrollTop === 0) { // don't show headers when you're viewing the top cell
+			if (editorScrollTop < 0) { // don't show headers when you're viewing the top cell
 				this.updateDisplay();
 				this.currentStickyLines = new Map();
 				return;
@@ -335,7 +335,7 @@ export class NotebookStickyScroll extends Disposable {
 					}
 					const nextSectionStickyHeight = this.computeStickyHeight(nextSectionEntry!);
 					// recompute section bottom based on the top of the next section
-					sectionBottom = this.notebookCellList.getCellViewScrollTop(nextSectionEntry!.cell);
+					sectionBottom = this.notebookCellList.getCellViewScrollTop(nextSectionEntry!.cell) - 10;
 
 					// this block of logic cleans transitions between two sections that share a parent.
 					// if the current section and the next section share a parent, then we can render the next section's sticky lines to avoid pop-in between
@@ -401,7 +401,6 @@ export class NotebookStickyScroll extends Disposable {
 	}
 
 	private renderStickyLines(entry: OutlineEntry | undefined, containerElement: HTMLElement, numLinesToRender: number, newMap: Map<OutlineEntry, NotebookStickyLine>) {
-		const partial = false;
 		let currentEntry = entry;
 
 		const elementsToRender = [];
@@ -411,7 +410,7 @@ export class NotebookStickyScroll extends Disposable {
 				currentEntry = currentEntry.parent;
 				continue;
 			}
-			const lineToRender = this.createStickyElement(currentEntry, partial);
+			const lineToRender = this.createStickyElement(currentEntry);
 			newMap.set(currentEntry, lineToRender);
 			elementsToRender.unshift(lineToRender);
 			currentEntry = currentEntry.parent;
@@ -430,17 +429,10 @@ export class NotebookStickyScroll extends Disposable {
 		return newMap;
 	}
 
-	private createStickyElement(entry: OutlineEntry, partial: boolean) {
+	private createStickyElement(entry: OutlineEntry) {
 		const stickyElement = document.createElement('div');
 		stickyElement.classList.add('notebook-sticky-scroll-line');
 		stickyElement.innerText = '#'.repeat(entry.level) + ' ' + entry.label;
-
-		// todo: partial line rendering for animations
-		if (partial) {
-			// const partialHeight = Math.floor(remainder * 22);
-			// stickyLine.style.height = `${partialHeight}px`;
-		}
-
 		return new NotebookStickyLine(stickyElement, entry, this.notebookEditor);
 	}
 
