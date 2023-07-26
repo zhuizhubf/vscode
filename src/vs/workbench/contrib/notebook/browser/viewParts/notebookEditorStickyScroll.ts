@@ -416,6 +416,12 @@ export class NotebookStickyScroll extends Disposable {
 			currentEntry = currentEntry.parent;
 		}
 
+		// use negative margins to render the bottom sticky line as a partial element
+		if (numLinesToRender % 1 !== 0) {
+			const partialHeight = 22 - Math.floor((numLinesToRender % 1) * 22);
+			elementsToRender[elementsToRender.length - 1].element.style.marginTop = `-${partialHeight}px`;
+		}
+
 		// iterate over elements to render, and append to container
 		// break when we reach numLinesToRender
 		for (let i = 0; i < elementsToRender.length; i++) {
