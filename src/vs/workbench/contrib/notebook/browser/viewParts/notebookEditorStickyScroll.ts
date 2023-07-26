@@ -48,6 +48,14 @@ export class ToggleNotebookStickyScroll extends Action2 {
 	}
 }
 
+// TODO @Yoyokrazy:
+// BEHAVIOR
+// - [ ] bug with some popping around the cell transition
+// - [ ] bug with only bottom most sticky being partially transitioned
+// 		- partial rendering/transition only occuring when the headers shrink against a new section
+// UX
+// - [ ] render symbols instead of #'s?
+// 		- maybe 'Hx >' where x is the level
 class NotebookStickyLine extends Disposable {
 	constructor(
 		public readonly element: HTMLElement,
