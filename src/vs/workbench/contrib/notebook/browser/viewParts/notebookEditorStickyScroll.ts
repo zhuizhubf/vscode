@@ -349,7 +349,7 @@ export class NotebookStickyScroll extends Disposable {
 						this.currentStickyLines = newMap;
 						break;
 					} else if (Math.abs(currentSectionStickyHeight - nextSectionStickyHeight) > 22) { // only shrink sticky
-						const linesToRender = Math.floor((sectionBottom - editorScrollTop) / 22);
+						const linesToRender = (sectionBottom - editorScrollTop) / 22;
 						let newMap: Map<OutlineEntry, NotebookStickyLine> | undefined = new Map();
 						newMap = this.renderStickyLines(entry?.parent, this.domNode, linesToRender, newMap);
 						if (!newMap) {
@@ -419,6 +419,7 @@ export class NotebookStickyScroll extends Disposable {
 		// use negative margins to render the bottom sticky line as a partial element
 		if (numLinesToRender % 1 !== 0) {
 			const partialHeight = 22 - Math.floor((numLinesToRender % 1) * 22);
+			elementsToRender[elementsToRender.length - 1].element.style.zIndex = '-1';
 			elementsToRender[elementsToRender.length - 1].element.style.marginTop = `-${partialHeight}px`;
 		}
 
