@@ -63,8 +63,7 @@ class NotebookStickyLine extends Disposable {
 		public readonly notebookEditor: INotebookEditor,
 	) {
 		super();
-		this._register(DOM.addDisposableListener(this.element, DOM.EventType.CLICK, (e) => {
-			console.log('click on sticky line');
+		this._register(DOM.addDisposableListener(this.element, DOM.EventType.CLICK, () => {
 			this.focusCell();
 		}));
 	}
@@ -86,7 +85,6 @@ class NotebookStickyLine extends Disposable {
 		}
 		return count;
 	}
-
 }
 
 
@@ -96,6 +94,10 @@ export class NotebookStickyScroll extends Disposable {
 
 	getDomNode(): HTMLElement {
 		return this.domNode;
+	}
+
+	getCurrentStickyHeight() {
+		return this.currentStickyLines.size * 22;
 	}
 
 	constructor(
@@ -138,6 +140,9 @@ export class NotebookStickyScroll extends Disposable {
 			this.init();
 		} else {
 			this._disposables.clear();
+			this.currentStickyLines.forEach((value) => {
+				value.dispose();
+			});
 			DOM.clearNode(this.domNode);
 			this.updateDisplay();
 		}
@@ -222,9 +227,10 @@ export class NotebookStickyScroll extends Disposable {
 
 			// if we are here, the cell is a code cell.
 			// check next cell, if markdown, that means this is the end of the section
-			const nextVisibleCell = this.notebookEditor.cellAt(i + 1);
-			if (nextVisibleCell && i + 1 < visibleRange.end) {
-				if (nextVisibleCell.cellKind === CellKind.Markup) {
+			// check if cell is within visible range
+			const nextCell = this.notebookEditor.cellAt(i + 1);
+			if (nextCell && i + 1 < visibleRange.end) {
+				if (nextCell.cellKind === CellKind.Markup) {
 					// this is the end of the section
 					// store the bottom scroll position of this cell
 					sectionBottom = this.notebookCellList.getCellViewScrollBottom(cell);
@@ -453,6 +459,9 @@ export class NotebookStickyScroll extends Disposable {
 
 	override dispose() {
 		this._disposables.dispose();
+		this.currentStickyLines.forEach((value) => {
+			value.dispose();
+		});
 		super.dispose();
 	}
 }
