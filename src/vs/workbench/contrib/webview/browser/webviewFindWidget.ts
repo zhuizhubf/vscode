@@ -63,6 +63,11 @@ export class WebviewFindWidget extends SimpleFindWidget {
 		this._delegate.focus();
 	}
 
+	override dispose() {
+		super.dispose();
+		this._delegate.stopFind(true);
+	}
+
 	protected _onInputChanged(): boolean {
 		const val = this.inputValue;
 		if (val) {
