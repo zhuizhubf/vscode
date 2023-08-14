@@ -65,7 +65,7 @@ export class WebviewFindWidget extends SimpleFindWidget {
 
 	override dispose() {
 		super.dispose();
-		this._delegate.stopFind(true);
+		this._delegate.stopFind(false);
 	}
 
 	protected _onInputChanged(): boolean {
